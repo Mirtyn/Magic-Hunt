@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Assets.Modules
+namespace Assets.Models
 {
     public class RayCast
     {

@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 
-namespace Assets.Modules
+namespace Assets.Models
 {
     public class RayMarching
     {

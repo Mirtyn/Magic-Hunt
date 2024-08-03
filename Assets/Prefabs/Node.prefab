@@ -229,6 +229,7 @@ MonoBehaviour:
   Selected: 0
   InChain: 0
   Complete: 0
+  topBarText: {fileID: 5677672732828737600}
 --- !u!1 &5352817490794523773
 GameObject:
   m_ObjectHideFlags: 0

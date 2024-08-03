@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Assets.Modules;
+using Assets.Models;
 using TMPro;
 
 public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPointerExitHandler*/

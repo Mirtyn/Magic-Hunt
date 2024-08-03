@@ -2,7 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Assets.Modules
+namespace Assets.Models
+
 {
     public class GameSettings
     {

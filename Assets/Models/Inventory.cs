@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Assets.Modules
+namespace Assets.Models
 {
     public class Inventory
     {

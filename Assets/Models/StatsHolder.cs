@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Assets.Modules
+namespace Assets.Models
 {
     public class StatsHolder
     {
