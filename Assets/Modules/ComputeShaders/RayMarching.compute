@@ -1,0 +1,37 @@
+#pragma kernel CSMain
+
+struct Ray
+{
+    float2 origin;
+    float2 direction;
+};
+
+Ray CreateRay(float2 origin, float2 direction)
+{
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    return ray;
+}
+
+
+float SignedDstToCircle(float2 p, float2 origin, float radius)
+{
+    return length(origin - p) - radius;
+}
+
+
+float signedDstToBox(float2 p, float2 origin, float2 size)
+{
+    float2 offset = abs(p - origin) - size;
+    // dst from piont outside box to edge (0 if inside box)
+    float unsignedDst = length(max(offset, 0));
+    // -dst from point inside box to edge (0 if outside box)
+    float dstInsideBox = length(min(offset, 0));
+    return unsignedDst + dstInsideBox;
+}
+
+//float signedDstToScene(float2 p)
+//{
+//    float dstToScene = maxDist
+//}
