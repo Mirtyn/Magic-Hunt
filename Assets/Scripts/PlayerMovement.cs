@@ -6,10 +6,6 @@ using UnityEngine.EventSystems;
 
 public class PlayerMovement : ProjectBehaviour
 {
-    [SerializeField] private float moveSpeed = 5f;
-    //[SerializeField] private float rotateSpeed = 90f;
-    [SerializeField] private float playerRadius = 0.4f;
-    [SerializeField] private float accelerateSpeed = 25f;
     //[SerializeField] private bool isWalking;
 
     private NavMeshAgent navMeshAgent;
@@ -17,9 +13,9 @@ public class PlayerMovement : ProjectBehaviour
     private void Awake()
     {
         navMeshAgent = GetComponent<NavMeshAgent>();
-        navMeshAgent.speed = moveSpeed;
-        navMeshAgent.radius = playerRadius;
-        navMeshAgent.acceleration = accelerateSpeed;
+        navMeshAgent.speed = PlayerStats.Instance.GetMoveSpeed();
+        navMeshAgent.radius = PlayerStats.Instance.GetPlayerRadius();
+        navMeshAgent.acceleration = PlayerStats.Instance.GetAccelerateSpeed();
     }
 
     void Update()

@@ -3,13 +3,10 @@
 public class PlayerSkills : ProjectBehaviour
 {
     public static PlayerSkills Instance { get; private set; }
-    public Transform ThisTransform { get; private set; }
-    public float SpawnProjectilesDistance { get; private set; } = 0.8f;
 
     private void Awake()
     {
         Instance = this;
-        ThisTransform = transform;
     }
 
     private void Start()

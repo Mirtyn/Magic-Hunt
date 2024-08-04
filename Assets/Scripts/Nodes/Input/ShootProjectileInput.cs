@@ -42,14 +42,14 @@ public class ShootProjectileInput : INodeInput
             ProjectileManager.Instance.CreateProjectile<Projectile>()
         };
 
-        PlayerSkills playerSkills = PlayerSkills.Instance;
-        Transform transform = playerSkills.transform;
+        PlayerStats playerStats = PlayerStats.Instance;
+        Transform transform = playerStats.transform;
 
         projectiles = ProjectileManager.Instance.SpreadProjectiles
         (
             projectiles,
             transform.position,
-            playerSkills.SpawnProjectilesDistance,
+            playerStats.GetSpawnProjectilesDistance(),
                 new Vector2(Camera.main.ScreenToWorldPoint(Input.mousePosition).x - transform.position.x, 
                 Camera.main.ScreenToWorldPoint(Input.mousePosition).y - transform.position.y).normalized,
             60f

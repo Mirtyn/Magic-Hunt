@@ -49,11 +49,17 @@ public class ProjectileVisualBehaviour : ProjectBehaviour
                     if (projectile.Stats.Piercing > 0)
                     {
                         projectile.Stats.Piercing--;
+                        IEnemy enemy = results[i].transform.GetComponent<IEnemy>();
+                        enemy.GetDamaged(projectile.Stats.Damage);
+                        enemy.SetActiveElement(projectile.Stats.Element);
                         canMove = true;
                     }
                     else
                     {
                         canMove = false;
+                        IEnemy enemy = results[i].transform.GetComponent<IEnemy>();
+                        enemy.GetDamaged(projectile.Stats.Damage);
+                        enemy.SetActiveElement(projectile.Stats.Element);
                         willBeDestroyed = true;
                     }
                 }
