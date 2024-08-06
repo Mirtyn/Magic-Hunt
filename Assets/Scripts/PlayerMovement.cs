@@ -10,7 +10,7 @@ public class PlayerMovement : ProjectBehaviour
 
     private NavMeshAgent navMeshAgent;
 
-    private void Awake()
+    private void Start()
     {
         navMeshAgent = GetComponent<NavMeshAgent>();
         navMeshAgent.speed = PlayerStats.Instance.GetMoveSpeed();

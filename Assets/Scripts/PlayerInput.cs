@@ -25,15 +25,23 @@ public class PlayerInput : ProjectBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            PauseGame = !PauseGame;
-
-            if (PauseGame)
+            if (!InventoryOpen)
             {
-                RunOnPauseGame(this);
+                PauseGame = !PauseGame;
+
+                if (PauseGame)
+                {
+                    RunOnPauseGame(this);
+                }
+                else
+                {
+                    RunOnPlayGame(this);
+                }
             }
             else
             {
-                RunOnPlayGame(this);
+                InventoryOpen = false;
+                RunOnInventoryClosed(this);
             }
         }
 

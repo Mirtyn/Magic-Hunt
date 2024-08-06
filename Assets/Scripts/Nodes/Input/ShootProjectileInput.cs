@@ -11,7 +11,9 @@ public class ShootProjectileInput : INodeInput
     //public NodeHook AttachedNodeHook { get; set; }
     public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
 
-    public string TopBarText { get; set; } = "Input Node:\nShoot Projectile";
+    public string TopBarText { get; set; } = "Input Node:\nCold Blast";
+    public string Title { get; set; } = "Cold Blast";
+    public string Info { get; set; } = "4 projectiles\nDamage 1\nSpeed 5\nFrozen Projectiles";
 
     public INode ConnectedNode { get; set; }
     public INode PrevConnectedNode { get; set; }

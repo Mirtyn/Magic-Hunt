@@ -12,6 +12,8 @@ public class TestInput : INodeInput
     public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
 
     public string TopBarText { get; set; } = "Input Node:\nTest Input";
+    public string Title { get; set; } = "Test Input";
+    public string Info { get; set; }
 
     public INode ConnectedNode { get; set; }
     public INode PrevConnectedNode { get; set; }

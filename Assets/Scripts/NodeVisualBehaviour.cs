@@ -1,11 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Assets.Models;
 using TMPro;
 
 public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPointerExitHandler*/
@@ -15,6 +10,7 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
     private static Color normalColor = new Color(0.15f, 0.15f, 0.15f, 1);
     private static Color completeChainColor = Color.green;
     private static Color incompleteChainColor = Color.red;
+    private static Color normalGoldOutlining = new Color(1f, 0.784f, 0.211f);
 
     private NodeDragger nodeDragger;
     public INode Node;
@@ -27,6 +23,7 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
     public bool Selected;
     public bool InChain;
     public bool Complete;
+    private bool displayGoldOutlining = true;
     [SerializeField] private TMP_Text topBarText;
 
     //private bool didDragPrevFrame = false;
@@ -64,8 +61,9 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
 
     private void Update()
     {
+        if (!InventoryOpen) return;
         CheckIfMouseInsideRect();
-
+        TryDisplayInfo();
         TryToDrag();
 
         //if (insideRect)
@@ -146,6 +144,9 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
             minCorner.y < mousePos.y && maxCorner.y > mousePos.y)
         {
             insideRect = true;
+
+            displayGoldOutlining = false;
+
             if (!Selected)
             {
                 if (InChain)
@@ -172,7 +173,11 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
         else
         {
             insideRect = false;
-            if (!Selected)
+            if (displayGoldOutlining)
+            {
+                Outline.effectColor = normalGoldOutlining;
+            }
+            else if (!Selected)
             {
                 if (InChain)
                 {
@@ -278,5 +283,17 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
     public void SetTopBarText(string text)
     {
         topBarText.text = text;
+    }
+
+    public void TryDisplayInfo()
+    {
+        if (insideRect && !Input.GetMouseButton(0))
+        {
+            NodeInfoDisplayer.Instance.Display(Node.Title, Node.Info, this);
+        }
+        else
+        {
+            NodeInfoDisplayer.Instance.Deactivate(this);
+        }
     }
 }

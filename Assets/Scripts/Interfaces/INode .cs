@@ -10,6 +10,8 @@ public interface INode
     public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
 
     public string TopBarText { get; set; }
+    public string Title { get; set; }
+    public string Info { get; set; }
 
     public INode ConnectedNode { get; set; }
     public INode PrevConnectedNode { get; set; }

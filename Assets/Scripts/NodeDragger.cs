@@ -40,6 +40,8 @@ public class NodeDragger : ProjectBehaviour
             currentlyGettingDraggedNode.Node.TryDetachNode();
 
             currentlyGettingDraggedNode.SetRectPosition(Input.mousePosition);
+
+            currentlyGettingDraggedNode.transform.SetAsLastSibling();
         }
         else if (isDraggingNode)
         {

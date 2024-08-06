@@ -8,6 +8,8 @@ public class TestOutput : INodeOutput
     public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
 
     public string TopBarText { get; set; } = "Output Node:\nTest Output";
+    public string Title { get; set; } = "Test Output";
+    public string Info { get; set; }
 
     public INode ConnectedNode { get; set; }
     public INode PrevConnectedNode { get; set; }

@@ -17,11 +17,13 @@ public class ProjectBehaviour : MonoBehaviour
 
     public static void RunOnPauseGame(object sender)
     {
+        Time.timeScale = 0;
         OnPauseGame?.Invoke(sender, EventArgs.Empty);
     }
 
     public static void RunOnPlayGame(object sender)
     {
+        Time.timeScale = 1;
         OnPlayGame?.Invoke(sender, EventArgs.Empty);
     }
 

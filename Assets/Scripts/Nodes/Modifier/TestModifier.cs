@@ -8,6 +8,8 @@ public class TestModifier : INodeModifier
     public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
 
     public string TopBarText { get; set; } = "Modifier Node:\nTest Modifier";
+    public string Title { get; set; } = "Test Modifier";
+    public string Info { get; set; }
 
     public INode ConnectedNode { get; set; }
     public INode PrevConnectedNode { get; set; }

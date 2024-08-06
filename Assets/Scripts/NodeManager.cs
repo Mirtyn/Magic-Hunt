@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Assets.Models;
 using UnityEngine.UI;
@@ -121,7 +119,12 @@ public class NodeManager : ProjectBehaviour
 
     public T CreateNewInputNode<T>() where T : INodeInput, new()
     {
-        GameObject nodeObject = Instantiate(GameManager.NodePrefab, childTransform);
+        float width = Screen.width / 3;
+        float height = Screen.height / 3;
+        Vector2 pos = new Vector2(UnityEngine.Random.Range(-width, width) + Screen.width / 2, UnityEngine.Random.Range(-height, height) + Screen.height / 2);
+
+        GameObject nodeObject = Instantiate(GameManager.NodePrefab, pos, Quaternion.identity, childTransform);
+
         T node = new T();
         node.CreateNode(nodeObject.GetComponent<NodeVisualBehaviour>());
         return node;
@@ -129,7 +132,12 @@ public class NodeManager : ProjectBehaviour
 
     public T CreateNewModifierNode<T>() where T : INodeModifier, new()
     {
-        GameObject nodeObject = Instantiate(GameManager.NodePrefab, childTransform);
+        float width = Screen.width / 3;
+        float height = Screen.height / 3;
+        Vector2 pos = new Vector2(UnityEngine.Random.Range(-width, width) + Screen.width / 2, UnityEngine.Random.Range(-height, height) + Screen.height / 2);
+
+        GameObject nodeObject = Instantiate(GameManager.NodePrefab, pos, Quaternion.identity, childTransform);
+
         T node = new T();
         node.CreateNode(nodeObject.GetComponent<NodeVisualBehaviour>());
         return node;
@@ -137,7 +145,12 @@ public class NodeManager : ProjectBehaviour
 
     public T CreateNewOutputNode<T>() where T : INodeOutput, new()
     {
-        GameObject nodeObject = Instantiate(GameManager.NodePrefab, childTransform); 
+        float width = Screen.width / 3;
+        float height = Screen.height / 3;
+        Vector2 pos = new Vector2(UnityEngine.Random.Range(-width, width) + Screen.width / 2, UnityEngine.Random.Range(-height, height) + Screen.height / 2);
+
+        GameObject nodeObject = Instantiate(GameManager.NodePrefab, pos, Quaternion.identity, childTransform);
+
         T node = new T();
         node.CreateNode(nodeObject.GetComponent<NodeVisualBehaviour>());
         return node;
