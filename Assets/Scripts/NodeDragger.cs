@@ -63,23 +63,28 @@ public class NodeDragger : ProjectBehaviour
 
         if (CurrentlySelectedNode == null) return;
 
-        if (CurrentlySelectedNode.Node is not INodeInput) return;
+        if (!(CurrentlySelectedNode.Node is INodeInput)) return;
 
         switch (e.Key)
         {
             case KeyCode.Alpha1:
+                CurrentlySelectedNode.AssignKey(e.Key);
                 NodeManager.Instance.SetSkill(1, CurrentlySelectedNode.Node as INodeInput);
                 break;
             case KeyCode.Alpha2:
+                CurrentlySelectedNode.AssignKey(e.Key);
                 NodeManager.Instance.SetSkill(2, CurrentlySelectedNode.Node as INodeInput);
                 break;
             case KeyCode.Alpha3:
+                CurrentlySelectedNode.AssignKey(e.Key);
                 NodeManager.Instance.SetSkill(3, CurrentlySelectedNode.Node as INodeInput);
                 break;
             case KeyCode.Alpha4:
+                CurrentlySelectedNode.AssignKey(e.Key);
                 NodeManager.Instance.SetSkill(4, CurrentlySelectedNode.Node as INodeInput);
                 break;
             case KeyCode.Alpha5:
+                CurrentlySelectedNode.AssignKey(e.Key);
                 NodeManager.Instance.SetSkill(5, CurrentlySelectedNode.Node as INodeInput);
                 break;
         }

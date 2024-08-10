@@ -208,6 +208,14 @@ public class NodeManager : ProjectBehaviour
     {
         skillNum--;
 
+        if (Skills[skillNum] == node)
+        {
+            node.NodeVisualBehaviour.InChain = false;
+            node.NodeVisualBehaviour.UnAssignKey();
+            Skills[skillNum] = null;
+            return;
+        }
+
         for (int i = 0; i < Skills.Length; i++)
         {
             if (node == Skills[i])
@@ -219,6 +227,7 @@ public class NodeManager : ProjectBehaviour
         if (Skills[skillNum] != null)
         {
             Skills[skillNum].NodeVisualBehaviour.InChain = false;
+            Skills[skillNum].NodeVisualBehaviour.UnAssignKey();
         }
 
         Skills[skillNum] = node;

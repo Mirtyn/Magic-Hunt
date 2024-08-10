@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.InputSystem;
 
 public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPointerExitHandler*/
 {
@@ -24,7 +25,10 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
     public bool InChain;
     public bool Complete;
     private bool displayGoldOutlining = true;
+    [SerializeField] private GameObject star;
     [SerializeField] private TMP_Text topBarText;
+    //[SerializeField] private Image assignedKeyVisual;
+    [SerializeField] private TMP_Text assignedKeyText;
 
     //private bool didDragPrevFrame = false;
     //private bool mousePressedBeforeEntering = false;
@@ -57,12 +61,14 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
         //button.onClick.AddListener(StartDragging);
         //nodeVisualBehaviourRects.Add(this);
         rectTransforms.Add(rectTransform);
+        UnAssignKey();
     }
 
     private void Update()
     {
         if (!InventoryOpen) return;
         CheckIfMouseInsideRect();
+        TrySetAssignedKeyTextColor();
         TryDisplayInfo();
         TryToDrag();
 
@@ -93,6 +99,18 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
         else if (rectTransform.position.y < 0)
         {
             rectTransform.position = new Vector3(rectTransform.position.x, 0, rectTransform.position.z);
+        }
+    }
+
+    private void TrySetAssignedKeyTextColor()
+    {
+        if (Complete)
+        {
+            assignedKeyText.color = completeChainColor;
+        }
+        else
+        {
+            assignedKeyText.color = incompleteChainColor;
         }
     }
 
@@ -146,6 +164,8 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
             insideRect = true;
 
             displayGoldOutlining = false;
+            star?.SetActive(false);
+            star = null;
 
             if (!Selected)
             {
@@ -295,5 +315,15 @@ public class NodeVisualBehaviour : ProjectBehaviour/*, IPointerEnterHandler, IPo
         {
             NodeInfoDisplayer.Instance.Deactivate(this);
         }
+    }
+
+    public void AssignKey(KeyCode key)
+    {
+        assignedKeyText.text = char.ToString((char)key);
+    }
+
+    public void UnAssignKey()
+    {
+        assignedKeyText.text = "";
     }
 }

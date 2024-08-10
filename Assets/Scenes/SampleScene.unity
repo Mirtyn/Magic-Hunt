@@ -377,8 +377,8 @@ GameObject:
   - component: {fileID: 311773491}
   - component: {fileID: 311773494}
   - component: {fileID: 311773493}
-  - component: {fileID: 311773492}
   - component: {fileID: 311773495}
+  - component: {fileID: 311773496}
   m_Layer: 5
   m_Name: Panel
   m_TagString: Untagged
@@ -407,21 +407,6 @@ RectTransform:
   m_AnchoredPosition: {x: 158, y: -257.8}
   m_SizeDelta: {x: 300, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &311773492
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 311773490}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_EffectColor: {r: 0.11320752, g: 0.11320752, b: 0.11320752, a: 1}
-  m_EffectDistance: {x: 8, y: 8}
-  m_UseGraphicAlpha: 1
 --- !u!114 &311773493
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -435,15 +420,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.1981132, g: 0.1981132, b: 0.1981132, a: 1}
+  m_Color: {r: 0.21698111, g: 0.21698111, b: 0.21698111, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 4470fc89c88692546a89ea610eb54761, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -474,6 +459,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   displayTitleText: {fileID: 1810686541}
   displayInfoText: {fileID: 715621541}
+--- !u!114 &311773496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 311773490}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cfabb0440166ab443bba8876756fdfa9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_EffectColor: {r: 0.09803922, g: 0.09803922, b: 0.09803922, a: 0.39215687}
+  m_EffectDistance: {x: 7, y: -7}
+  m_UseGraphicAlpha: 1
 --- !u!1 &314043127
 GameObject:
   m_ObjectHideFlags: 0
@@ -490,7 +490,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!156049354 &314043128
 Grid:
   m_ObjectHideFlags: 0
@@ -2089,7 +2089,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 7.8811646, y: 0, z: 0, w: 0}
+  m_margin: {x: 26.070068, y: 0, z: 19.724121, w: 19.321884}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -2489,6 +2489,7 @@ MonoBehaviour:
   NodePrefab: {fileID: 5183674204622745208, guid: e462439b7da374a41a9f20e50ba7a38f, type: 3}
   ProjectilePrefab: {fileID: 4546557961405492180, guid: 0db1cccb2b02b0d4295241d903e002ec, type: 3}
   EnemyPrefab: {fileID: 6839799739139971271, guid: 671a785f1d7db774fa7deab20f932a6c, type: 3}
+  TilePrefab: {fileID: 708201205893310159, guid: 7ef0552340a0c5348b99ae49495c2872, type: 3}
   ZombieSO: {fileID: 11400000, guid: 95695fb520c35334a876557de9d77ba4, type: 2}
   ProjectileHitLayerMask:
     serializedVersion: 2
@@ -2545,8 +2546,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -63.9074}
-  m_SizeDelta: {x: 0, y: 127.8149}
+  m_AnchoredPosition: {x: 0, y: -50.15361}
+  m_SizeDelta: {x: 0, y: 100.3074}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1810686541
 MonoBehaviour:
@@ -2631,7 +2632,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 7.8811646, y: 6.9328613, z: 0, w: 0}
+  m_margin: {x: 24.856201, y: 24.692993, z: 20.483887, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -4034,15 +4035,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.2735849, g: 0.2735849, b: 0.2735849, a: 0.8627451}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 24e635e51206a944ebbb72838efc0c4d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4

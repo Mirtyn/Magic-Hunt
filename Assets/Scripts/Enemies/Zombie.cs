@@ -1,4 +1,3 @@
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -14,8 +13,8 @@ public class Zombie : ProjectBehaviour, IEnemy
 
     public float Health { get; private set; } = 5f;
     public float MinDistanceToPlayerToAttack { get; private set; } = 0.8f;
-    public float ViewDistance { get; private set; } = 16f;
-    public float HearDistance { get; private set; } = 4f;
+    public float ViewDistance { get; private set; } = 8f;
+    public float HearDistance { get; private set; } = 1f;
     public float Damage { get; private set; } = 1f;
     public float Speed { get; set; } = 2f;
     public float AccelerateSpeed { get; private set; } = 6f;

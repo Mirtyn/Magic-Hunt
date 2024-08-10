@@ -7,6 +7,7 @@ public class GameManager : ProjectBehaviour
     public GameObject NodePrefab;
     public GameObject ProjectilePrefab;
     public GameObject EnemyPrefab;
+    public GameObject TilePrefab;
 
     public EnemySO ZombieSO;
 
@@ -19,5 +20,8 @@ public class GameManager : ProjectBehaviour
     private void Awake()
     {
         GameManager = this;
+
+        DungeonGenerator dungeonGenerator = new DungeonGenerator(20, 20, 100, 25, 35, 100, 2, 10, 2, 10);
+        dungeonGenerator.Start();
     }
 }
