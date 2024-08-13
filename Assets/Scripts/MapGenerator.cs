@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using UnityEngine.Tilemaps;
 using System.ComponentModel;
 using System.Drawing;
-using Unity.VisualScripting;
 using UnityEngine.Experimental.GlobalIllumination;
 using System.Runtime.CompilerServices;
 using Assets.Models;
@@ -15,9 +14,13 @@ using UnityEditor;
 using System.Linq;
 using Point = Assets.DungeonGeneratorAlgorithms.Point;
 using Edge = Assets.DungeonGeneratorAlgorithms.Edge;
-using System.Threading;
 using System.Collections;
-using System.Security.Cryptography;
+using static UnityEditor.Searcher.SearcherWindow.Alignment;
+using UnityEngine.UIElements;
+using UnityEditor.SearchService;
+using UnityEngine.SceneManagement;
+using Scene = UnityEngine.SceneManagement.Scene;
+using static UnityEditor.PlayerSettings;
 
 public class DungeonGenerator
 {
@@ -34,6 +37,7 @@ public class DungeonGenerator
     private int maxNumAttemptsGenerateFillInGapRooms = 50;
 
     private List<Room> rooms = new List<Room>();
+    private List<GameObject> roomGameObjects = new List<GameObject>();
 
     private static System.Random random = new System.Random();
 
@@ -45,6 +49,8 @@ public class DungeonGenerator
     private int minRoomHeight = 3;
     private int maxRoomHeight = 12;
 
+    private float numRandomllyAddedProcentHallways = 10;
+
     private Dictionary<Vector2, Tile> tiles = new Dictionary<Vector2, Tile>();
 
     public DungeonGenerator()
@@ -52,7 +58,7 @@ public class DungeonGenerator
         numRoomsToReturn = random.Next(minNumRooms, maxNumRooms);
     }
 
-    public DungeonGenerator(int mapSizeX, int mapSizeY, int numRoomsToGenerate, int minNumRoomsToReturn, int maxNumRoomsToReturn, int maxNumAttemptsGenerateFillInGapRooms, int minRoomWidth, int maxRoomWidth, int minRoomHeight, int maxRoomHeight)
+    public DungeonGenerator(int mapSizeX, int mapSizeY, int numRoomsToGenerate, int minNumRoomsToReturn, int maxNumRoomsToReturn, int maxNumAttemptsGenerateFillInGapRooms, int minRoomWidth, int maxRoomWidth, int minRoomHeight, int maxRoomHeight, float numRandomllyAddedProcentHallways)
     {
         this.mapSizeX = mapSizeX;
         this.mapSizeY = mapSizeY;
@@ -65,86 +71,148 @@ public class DungeonGenerator
         this.maxRoomHeight = maxRoomHeight;
         this.maxNumAttemptsGenerateFillInGapRooms = maxNumAttemptsGenerateFillInGapRooms;
         numRoomsToReturn = random.Next(minNumRooms, maxNumRooms);
+        this.numRandomllyAddedProcentHallways = numRandomllyAddedProcentHallways;
     }
 
-    public Dictionary<Vector2, Tile> Start()
-    {
-        Vector2 leftB = Vector2.zero;
-        Vector2 rightB = new Vector2(mapSizeX, 0);
-        Vector2 leftT = new Vector2(0, mapSizeY);
-        Vector2 rightT = new Vector2(mapSizeX, mapSizeY);
-        Debug.DrawLine(leftB, rightB, UnityEngine.Color.magenta, 100f);
-        Debug.DrawLine(leftB, leftT, UnityEngine.Color.magenta, 100f);
-        Debug.DrawLine(rightT, rightB, UnityEngine.Color.magenta, 100f);
-        Debug.DrawLine(rightT, leftT, UnityEngine.Color.magenta, 100f);
+    //Vector2 leftB = Vector2.zero;
+    //Vector2 rightB = new Vector2(mapSizeX, 0);
+    //Vector2 leftT = new Vector2(0, mapSizeY);
+    //Vector2 rightT = new Vector2(mapSizeX, mapSizeY);
+    //Debug.DrawLine(leftB, rightB, UnityEngine.Color.magenta, 100f);
+    //Debug.DrawLine(leftB, leftT, UnityEngine.Color.magenta, 100f);
+    //Debug.DrawLine(rightT, rightB, UnityEngine.Color.magenta, 100f);
+    //Debug.DrawLine(rightT, leftT, UnityEngine.Color.magenta, 100f);
 
+    public IEnumerator Start()
+    {
         for (int i = 0; i < numRoomsToGenerate; i++)
         {
-            rooms.Add(CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY)));
+            rooms.Add(CreateRoom(GetRandomPointInCircle(mapSizeX)));
         }
 
+        bool simulate = true;
+        while (simulate)
+        {
+            CreateSceneParameters csp = new CreateSceneParameters(LocalPhysicsMode.Physics2D);
+            Scene simulatedScene = SceneManager.CreateScene("SimulatedScene", csp);
+
+            PhysicsScene2D physicsScene2D = simulatedScene.GetPhysicsScene2D();
+            float time = 0f;
+
+            List<Rigidbody2D> rbs = new List<Rigidbody2D>();
+
+            for (int j = 0; j < roomGameObjects.Count; j++)
+            {
+                SceneManager.MoveGameObjectToScene(roomGameObjects[j], simulatedScene);
+                rbs.Add(roomGameObjects[j].GetComponent<Rigidbody2D>());
+            }
+            while (simulate)
+            {
+                time += Time.deltaTime;
+                if (physicsScene2D.IsValid())
+                {
+                    while (time >= Time.deltaTime)
+                    {
+                        time -= Time.deltaTime;
+
+                        physicsScene2D.Simulate(Time.deltaTime);
+                        yield return new WaitForSeconds(0.0002f);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("physicsSceneNotValid");
+                    simulate = false;
+                }
+
+                if (rbs.All(rb => rb.IsSleeping()))
+                {
+                    for (int j = 0; j < rooms.Count; j++)
+                    {
+                        rooms[j].Origin = roomGameObjects[j].transform.position;
+                    }
+
+                    for (int i = 0; i < rooms.Count; i++)
+                    {
+                        Room room = rooms[i];
+                        room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
+                        roomGameObjects[i].transform.position = room.Origin;
+                        simulate = false;
+                    }
+                }
+
+                //for (int i = 0; i < rooms.Count; i++)
+                //{
+                //    Room room = rooms[i];
+                //    Vector2 force = SteeringBehaviourOperation(room);
+                //    room.Origin += force;
+                //    VisualizeRoom(room);
+                //    yield return new WaitForSeconds(0.0002f);
+                //}
+            }
+
+            //SceneManager.UnloadSceneAsync(simulatedScene);
+        }
+
+        foreach (Room room in rooms)
+        {
+            VisualizeRoomWithTiles(room);
+        }
+
+        Debug.Log("ok");
         for (int i = 0; i < rooms.Count; i++)
         {
             Room room = rooms[i];
-            List<Room> roomsToRemove = new List<Room>();
-
-            foreach (Room other in rooms)
-            {
-                if (other != room && CheckForRoomOverlap(room, other))
-                {
-                    roomsToRemove.Add(other);
-                }
-            }
-
-            foreach (Room removeRoom in roomsToRemove)
-            {
-                rooms.Remove(removeRoom);
-            }
+            room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
         }
 
-        if (rooms.Count > numRoomsToReturn)
+        foreach (Room room in rooms)
         {
-            int numRoomsToRemove = rooms.Count - numRoomsToReturn;
-
-            for (int i = 0; i < numRoomsToRemove; i++)
-            {
-                int rndNum = random.Next(rooms.Count);
-                rooms.RemoveAt(rndNum);
-            }
-        }
-        else if (rooms.Count < numRoomsToReturn)
-        {
-            int missingRooms = numRoomsToReturn - rooms.Count;
-
-            for (int i = 0; i < maxNumAttemptsGenerateFillInGapRooms; i++)
-            {
-                Room room = CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY));
-
-                bool isOverlap = rooms.Any(r => CheckForRoomOverlap(room, r));
-
-                if (!isOverlap)
-                {
-                    rooms.Add(room);
-                    missingRooms--;
-                }
-
-                if (missingRooms <= 0)
-                {
-                    break;
-                }
-            }
+            VisualizeRoomWithTiles(room);
         }
 
-        List<Tile> tilesList = ConvertRoomsToTiles(rooms);
+        //if (rooms.Count > numRoomsToReturn)
+        //{
+        //    int numRoomsToRemove = rooms.Count - numRoomsToReturn;
 
-        foreach (Tile tile in tilesList)
+        //    for (int i = 0; i < numRoomsToRemove; i++)
+        //    {
+        //        int rndNum = random.Next(rooms.Count);
+        //        Room removeRoom = rooms[rndNum];
+        //        removeRoom.Remove();
+        //        rooms.Remove(removeRoom);
+        //    }
+        //}
+        //else if (rooms.Count < numRoomsToReturn)
+        //{
+        //    int missingRooms = numRoomsToReturn - rooms.Count;
+
+        //    for (int i = 0; i < maxNumAttemptsGenerateFillInGapRooms; i++)
+        //    {
+        //        Room room = CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY));
+        //        rooms.Add(room);
+        //        bool isOverlap = rooms.Any(r => CheckForRoomOverlap(room, r));
+
+        //        if (!isOverlap)
+        //        {
+        //            missingRooms--;
+        //        }
+        //        else
+        //        {
+        //            room.Remove();
+        //            rooms.Remove(room);
+        //        }
+
+        //        if (missingRooms <= 0)
+        //        {
+        //            break;
+        //        }
+        //    }
+        //}
+
+        foreach (Room room in rooms)
         {
-            if (!tiles.TryAdd(tile.Position, tile))
-            {
-                tile.Position = Vector2.zero;
-                tile.SceneObject.transform.position = tile.Position;
-                tile.SceneObject.transform.SetParent(null);
-            }
+            VisualizeRoomWithTiles(room);
         }
 
         Point[] points = new Point[rooms.Count];
@@ -162,9 +230,160 @@ public class DungeonGenerator
 
         Prim.GetMinimumSpanningTree(triangleMesh);
 
-        //triangleMesh.Visualize();
+        Prim.RandomlySelectEdges(triangleMesh, numRandomllyAddedProcentHallways);
 
-        return tiles;
+        triangleMesh.Visualize();
+
+        yield return null;
+    }
+
+    //public IEnumerator Start()
+    //{
+    //    Vector2 leftB = Vector2.zero;
+    //    Vector2 rightB = new Vector2(mapSizeX, 0);
+    //    Vector2 leftT = new Vector2(0, mapSizeY);
+    //    Vector2 rightT = new Vector2(mapSizeX, mapSizeY);
+    //    Debug.DrawLine(leftB, rightB, UnityEngine.Color.magenta, 100f);
+    //    Debug.DrawLine(leftB, leftT, UnityEngine.Color.magenta, 100f);
+    //    Debug.DrawLine(rightT, rightB, UnityEngine.Color.magenta, 100f);
+    //    Debug.DrawLine(rightT, leftT, UnityEngine.Color.magenta, 100f);
+
+    //    for (int i = 0; i < numRoomsToGenerate; i++)
+    //    {
+    //        rooms.Add(CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY)));
+    //        yield return new WaitForSeconds(.0375f);
+    //    }
+
+    //    for (int i = 0; i < rooms.Count; i++)
+    //    {
+    //        Room room = rooms[i];
+    //        List<Room> roomsToRemove = new List<Room>();
+
+    //        foreach (Room other in rooms)
+    //        {
+    //            if (other != room && CheckForRoomOverlap(room, other))
+    //            {
+    //                roomsToRemove.Add(other);
+    //            }
+    //        }
+
+    //        foreach (Room removeRoom in roomsToRemove)
+    //        {
+    //            removeRoom.Remove();
+    //            rooms.Remove(removeRoom);
+    //            yield return new WaitForSeconds(.1f);
+    //        }
+    //    }
+
+    //    if (rooms.Count > numRoomsToReturn)
+    //    {
+    //        int numRoomsToRemove = rooms.Count - numRoomsToReturn;
+
+    //        for (int i = 0; i < numRoomsToRemove; i++)
+    //        {
+    //            int rndNum = random.Next(rooms.Count);
+    //            Room removeRoom = rooms[rndNum];
+    //            removeRoom.Remove();
+    //            rooms.Remove(removeRoom);
+    //            yield return new WaitForSeconds(.1f);
+    //        }
+    //    }
+    //    else if (rooms.Count < numRoomsToReturn)
+    //    {
+    //        int missingRooms = numRoomsToReturn - rooms.Count;
+
+    //        for (int i = 0; i < maxNumAttemptsGenerateFillInGapRooms; i++)
+    //        {
+    //            Room room = CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY));
+    //            rooms.Add(room);
+    //            bool isOverlap = rooms.Any(r => CheckForRoomOverlap(room, r));
+
+    //            if (!isOverlap)
+    //            {
+    //                missingRooms--;
+    //                yield return new WaitForSeconds(.1f);
+    //            }
+    //            else
+    //            {
+    //                room.Remove();
+    //                rooms.Remove(room);
+    //            }
+
+    //            if (missingRooms <= 0)
+    //            {
+    //                break;
+    //            }
+    //        }
+    //    }
+
+
+
+    //    Point[] points = new Point[rooms.Count];
+
+    //    for (int i = 0; i < rooms.Count; i++)
+    //    {
+    //        Room room = rooms[i];
+    //        float x = room.Origin.x + room.Width / 2;
+    //        float y = room.Origin.y + room.Height / 2;
+    //        Point point = new Point(x, y);
+    //        points[i] = point;
+    //    }
+
+    //    TriangleMesh triangleMesh = BowyerWatson.Triangulate(points, mapSizeX, mapSizeY);
+
+    //    Prim.GetMinimumSpanningTree(triangleMesh);
+
+    //    Prim.RandomlySelectEdges(triangleMesh, numRandomllyAddedProcentHallways);
+
+    //    triangleMesh.Visualize();
+
+    //    yield return null;
+    //}
+
+    private void SeperateRooms()
+    {
+        while (CheckIfAnyRoomsAreOverlappingInList(rooms))
+        {
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                Room room = rooms[i];
+                Vector2 force = SteeringBehaviourOperation(room);
+                room.Origin += force;
+            }
+
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                Room room = rooms[i];
+                room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
+            }
+        }
+    }
+
+    private Vector2 SteeringBehaviourOperation(Room room)
+    {
+        Vector2 pushForce = Vector2.zero;
+        int neighboursCount = 0;
+
+        foreach (Room other in rooms)
+        {
+            if (other != room && CheckForRoomOverlap(room, other))
+            {
+                float thisRoomSize = Mathf.Max(room.Width, room.Height) + 1;
+                float minDistanceForSeparation = (thisRoomSize / 2 + 2) + (Mathf.Max(other.Width, other.Height) / 2 + 2);
+
+                float Distance = Vector2.Distance(room.Origin, other.Origin);
+
+                if (Distance < minDistanceForSeparation)
+                {
+                    Vector2 pushDir = room.Origin - other.Origin;
+
+                    pushForce += pushDir / thisRoomSize;
+                    neighboursCount++;
+                }
+            }
+        }
+
+        return pushForce;
     }
 
     private Room CreateRoom(Vector2 startPoint)
@@ -173,6 +392,18 @@ public class DungeonGenerator
         int height = random.Next(minRoomHeight, maxRoomHeight + 1);
 
         Room room = new Room(width, height, startPoint);
+        Vector2 pos = new Vector2(room.Origin.x, room.Origin.y);
+        GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity);
+
+        obj.transform.localScale = new Vector3(width, height, 1);
+        BoxCollider2D collider = obj.AddComponent<BoxCollider2D>();
+        collider.size = new Vector2(1 + 1 / width, 1 + 1 / height);
+        collider.offset = new Vector2(1 / width, 1 / height);
+        Rigidbody2D rb = obj.AddComponent<Rigidbody2D>();
+        rb.gravityScale = 0f;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        roomGameObjects.Add(obj);
+
         return room;
     }
 
@@ -195,13 +426,33 @@ public class DungeonGenerator
         return new Vector2(x, y);
     }
 
+    private bool CheckIfAnyRoomsAreOverlappingInList(List<Room> rooms)
+    {
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            Room room = rooms[i];
+
+            for (int j = 0; j < rooms.Count; j++)
+            {
+                Room other = rooms[j];
+
+                if (other != room && CheckForRoomOverlap(other, room))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private bool CheckForRoomOverlap(Room room, Room other)
     {
-        float roomMinX = room.Origin.x - 1;
-        float roomMaxX = room.Origin.x + room.Width + 1;
+        float roomMinX = room.Origin.x;
+        float roomMaxX = room.Origin.x + room.Width;
 
-        float roomMinY = room.Origin.y - 1;
-        float roomMaxY = room.Origin.y + room.Height + 1;
+        float roomMinY = room.Origin.y;
+        float roomMaxY = room.Origin.y + room.Height;
 
         float otherRoomMinX = other.Origin.x;
         float otherRoomMaxX = other.Origin.x + other.Width;
@@ -230,37 +481,72 @@ public class DungeonGenerator
         return room;
     }
 
-    private List<Tile> ConvertRoomsToTiles(List<Room> rooms)
+    private void VisualizeRoomWithTiles(Room room)
     {
-        List<Tile> tiles = new List<Tile>();
+        List<Tile> newTiles = new List<Tile>();
 
-        foreach (Room room in rooms)
+        if (room.Visualized)
         {
-            for (int x = 0; x < room.Width; x++)
+            room.RoomMoved();
+            return;
+        }
+
+        room.Visualized = true;
+
+        for (int x = 0; x < room.Width; x++)
+        {
+            for (int y = 0; y < room.Height; y++)
             {
-                for (int y = 0; y < room.Height; y++)
-                {
-                    Vector2 pos = new Vector2(room.Origin.x + x, room.Origin.y + y);
-                    GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
-                    Tile tile = new Tile(pos, obj);
-                    tiles.Add(tile);
-                }
+                Vector2 pos = new Vector2(room.Origin.x - room.Width / 2 + x, room.Origin.y - room.Height / 2 + y);
+                Vector2 offset = new Vector2(x - room.Width / 2, y - room.Height / 2);
+                GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+                Tile tile = new Tile(pos, offset, obj, room);
+                newTiles.Add(tile);
             }
         }
 
-        return tiles;
+        //foreach (Tile tile in newTiles)
+        //{
+        //    if (!tiles.TryAdd(tile.Position, tile))
+        //    {
+        //        Tile other = tiles[tile.Position];
+        //        other.
+        //        //tile.Position = Vector2.zero;
+        //        //tile.SceneObject.transform.position = tile.Position;
+        //        //tile.SceneObject.transform.SetParent(null);
+        //    }
+        //}
     }
 }
 
 public class Tile
 {
     public Vector2 Position;
+    public Vector2 OffsetPosition;
     public GameObject SceneObject;
+    public Room Room;
 
-    public Tile(Vector2 position, GameObject sceneObject)
+    public Tile(Vector2 position, Vector2 offset, GameObject sceneObject, Room room)
     {
         Position = position;
+        OffsetPosition = offset;
         SceneObject = sceneObject;
+        room.OnRemove += OnRoomRemoved;
+        room.OnRoomMoved += OnRoomMoved;
+        Room = room;
+    }
+
+    private void OnRoomMoved(object sender, EventArgs e)
+    {
+        Position = Room.Origin + OffsetPosition;
+        SceneObject.transform.position = Position;
+    }
+
+    private void OnRoomRemoved(object sender, EventArgs e)
+    {
+        GameObject.Destroy(SceneObject);
+        Room.OnRoomMoved -= OnRoomMoved;
+        Room.OnRemove -= OnRoomRemoved;
     }
 }
 
@@ -271,6 +557,21 @@ public class Room
 
     public Vector2 Origin;
 
+    public bool Visualized = false;
+
+    public event EventHandler OnRemove;
+    public event EventHandler OnRoomMoved;
+
+    public void RoomMoved()
+    {
+        OnRoomMoved?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Remove()
+    {
+        OnRemove?.Invoke(this, EventArgs.Empty);
+    }
+
     public Room(int width, int height, Vector2 origin)
     {
         Width = width;
@@ -278,6 +579,8 @@ public class Room
         Origin = origin;
     }
 }
+
+
 namespace Assets.DungeonGeneratorAlgorithms
 {
     public class LinearEquation
@@ -416,6 +719,37 @@ namespace Assets.DungeonGeneratorAlgorithms
         {
             return !(lhs == rhs);
         }
+
+        public override int GetHashCode()
+        {
+            return x.GetHashCode() ^ (y.GetHashCode() << 2);
+        }
+
+        public override bool Equals(object other)
+        {
+            if (!(other is Point))
+            {
+                return false;
+            }
+
+            return Equals((Point)other);
+        }
+
+        public bool Equals(Point other)
+        {
+            return x == other.x && y == other.y;
+        }
+
+        public static bool AlmostEqual(float x, float y)
+        {
+            return Mathf.Abs(x - y) <= float.Epsilon * Mathf.Abs(x + y) * 2
+                || Mathf.Abs(x - y) < float.MinValue;
+        }
+
+        public static bool AlmostEqual(Point left, Point right)
+        {
+            return AlmostEqual(left.x, right.x) && AlmostEqual(left.y, right.y);
+        }
     }
 
     public class Edge
@@ -424,9 +758,11 @@ namespace Assets.DungeonGeneratorAlgorithms
         public Point End;
         public float Weight;
         public bool InTree;
+        public bool IsBad;
 
         public Edge(Point start, Point end)
         {
+            this.IsBad = false;
             this.Start = start;
             this.End = end;
             this.Weight = this.Start.DistanceTo(end); // Euclidean distance
@@ -434,45 +770,183 @@ namespace Assets.DungeonGeneratorAlgorithms
         }
 
 
-        public static bool operator ==(Edge lhs, Edge rhs)
+        //public static bool operator ==(Edge lhs, Edge rhs)
+        //{
+        //    return lhs.Start == rhs.Start && lhs.End == rhs.End;
+        //}
+
+        //public static bool operator !=(Edge lhs, Edge rhs)
+        //{
+        //    return !(lhs == rhs);
+        //}
+
+        public override int GetHashCode()
         {
-            return lhs.Start == rhs.Start && lhs.End == rhs.End;
+            return 0;
         }
 
-        public static bool operator !=(Edge lhs, Edge rhs)
+        public override bool Equals(object other)
         {
-            return !(lhs == rhs);
+            if (!(other is Edge))
+            {
+                return false;
+            }
+
+            return Equals((Edge)other);
+        }
+
+        public bool Equals(Edge other)
+        {
+            return this.Start == other.Start && this.End == other.End;
+        }
+
+        public static bool AlmostEqual(Edge left, Edge right)
+        {
+            return Point.AlmostEqual(left.Start, right.Start) && Point.AlmostEqual(left.End, right.End)
+                || Point.AlmostEqual(left.Start, right.End) && Point.AlmostEqual(left.End, right.Start);
         }
     }
 
+    //public class EdgedTriangle
+    //{
+    //    public Edge[] Edges;
+    //    //public Edge Edge1;
+    //    //public Edge Edge2;
+    //    //public Edge Edge3;
+
+    //    public EdgedTriangle(Edge edge1, Edge edge2, Edge edge3)
+    //    {
+    //        this.Edges = new Edge[3];
+    //        this.Edges[0] = edge1;
+    //        this.Edges[1] = edge2;
+    //        this.Edges[2] = edge3;
+    //        //this.Edge1 = edge1;
+    //        //this.Edge2 = edge2;
+    //        //this.Edge3 = edge3;
+    //    }
+
+    //    public void SetEdges(Edge[] edges)
+    //    {
+    //        this.Edges = edges;
+    //    }
+
+    //    public Point GetCircumcenter()
+    //    {
+    //        Point pointA = Edges[0].Start;
+    //        Point pointB = Edges[1].Start;
+    //        Point pointC = Edges[2].Start;
+
+    //        LinearEquation lineAB = new LinearEquation(pointA, pointB);
+    //        LinearEquation lineBC = new LinearEquation(pointB, pointC);
+
+    //        Point midPointAB = Point.Lerp(pointA, pointB, 0.5f);
+    //        Point midPointBC = Point.Lerp(pointB, pointC, 0.5f);
+
+    //        LinearEquation perpendicularAB = lineAB.PerpendicularLineAt(midPointAB);
+    //        LinearEquation perpendicularBC = lineBC.PerpendicularLineAt(midPointBC);
+
+    //        Point circumcircle = LinearEquation.GetCrossingPoint(perpendicularAB, perpendicularBC);
+
+    //        return circumcircle;
+    //    }
+
+    //    public float GetCircumRadius(Point circumcicle)
+    //    {
+    //        Point pointA = Edges[0].Start;
+
+    //        float circumCircle = Point.Distance(circumcicle, pointA);
+
+    //        return circumCircle;
+    //    }
+
+    //    private float TriangleArea(Point p1, Point p2, Point p3)
+    //    {
+    //        float det = ((p1.x - p3.x) * (p2.y - p3.y)) - ((p2.x - p3.x) * (p1.y - p3.y));
+    //        return (det / 2.0f);
+    //    }
+
+    //    private bool TrianglesAreaApproach(Point point, Point p1, Point p2, Point p3)
+    //    {
+    //        float triangleArea = TriangleArea(p1, p2, p3);
+
+    //        float areaSum = 0f;
+    //        areaSum += TriangleArea(p1, p2, point);
+    //        areaSum += TriangleArea(p1, p3, point);
+    //        areaSum += TriangleArea(p2, p3, point);
+
+    //        return (triangleArea == areaSum);
+    //    }
+
+    //    public bool ContainsEdge(Edge edge)
+    //    {
+    //        for (int i = 0; i < Edges.Length; i++)
+    //        {
+    //            if (Edges[i] == edge)
+    //            {
+    //                return true;
+    //            }
+    //        }
+
+    //        return false;
+    //    }
+
+    //    public bool ContainsVertex(Point vertex)
+    //    {
+    //        return Edges[0].Start == vertex || Edges[1].Start == vertex || Edges[2].Start == vertex;
+    //    }
+
+    //    public static bool operator ==(EdgedTriangle lhs, EdgedTriangle rhs)
+    //    {
+    //        return lhs.Edges[0] == rhs.Edges[0] && lhs.Edges[1] == rhs.Edges[1] && lhs.Edges[2] == rhs.Edges[2];
+    //    }
+
+    //    public static bool operator !=(EdgedTriangle lhs, EdgedTriangle rhs)
+    //    {
+    //        return !(lhs == rhs);
+    //    }
+
+    //    public override int GetHashCode()
+    //    {
+    //        return 0;
+    //    }
+
+    //    public override bool Equals(object other)
+    //    {
+    //        if (!(other is EdgedTriangle))
+    //        {
+    //            return false;
+    //        }
+
+    //        return Equals((EdgedTriangle)other);
+    //    }
+
+    //    public bool Equals(EdgedTriangle other)
+    //    {
+    //        return this.Edges[0] == other.Edges[0] && this.Edges[1] == other.Edges[1] && this.Edges[2] == other.Edges[2];
+    //    }
+    //}
+
     public class Triangle
     {
-        public Edge[] Edges;
-        //public Edge Edge1;
-        //public Edge Edge2;
-        //public Edge Edge3;
+        public bool IsBad;
 
-        public Triangle(Edge edge1, Edge edge2, Edge edge3)
-        {
-            this.Edges = new Edge[3];
-            this.Edges[0] = edge1;
-            this.Edges[1] = edge2;
-            this.Edges[2] = edge3;
-            //this.Edge1 = edge1;
-            //this.Edge2 = edge2;
-            //this.Edge3 = edge3;
-        }
+        public Point P1;
+        public Point P2;
+        public Point P3;
 
-        public void SetEdges(Edge[] edges)
+        public Triangle(Point p1, Point p2, Point p3)
         {
-            this.Edges = edges;
+            IsBad = false;
+            this.P1 = p1;
+            this.P2 = p2;
+            this.P3 = p3;
         }
 
         public Point GetCircumcenter()
         {
-            Point pointA = Edges[0].Start;
-            Point pointB = Edges[1].Start;
-            Point pointC = Edges[2].Start;
+            Point pointA = P1;
+            Point pointB = P2;
+            Point pointC = P3;
 
             LinearEquation lineAB = new LinearEquation(pointA, pointB);
             LinearEquation lineBC = new LinearEquation(pointB, pointC);
@@ -488,9 +962,26 @@ namespace Assets.DungeonGeneratorAlgorithms
             return circumcircle;
         }
 
+        public bool CircumCircleContains(Point point)
+        {
+            Point circlePoint = GetCircumcenter();
+            float radius = GetCircumRadius(circlePoint);
+
+            if ((point.x - circlePoint.x) * (point.x - circlePoint.x) +
+                (point.y - circlePoint.y) * (point.y - circlePoint.y)
+                <= radius * radius)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public float GetCircumRadius(Point circumcicle)
         {
-            Point pointA = Edges[0].Start;
+            Point pointA = P1;
 
             float circumCircle = Point.Distance(circumcicle, pointA);
 
@@ -517,111 +1008,137 @@ namespace Assets.DungeonGeneratorAlgorithms
 
         public bool ContainsVertex(Point vertex)
         {
-            return Edges[0].Start == vertex || Edges[1].Start == vertex || Edges[2].Start == vertex;
+            return Point.Distance(vertex, P1) < 0.01f
+                || Point.Distance(vertex, P2) < 0.01f
+                || Point.Distance(vertex, P3) < 0.01f;
         }
 
         public static bool operator ==(Triangle lhs, Triangle rhs)
         {
-            return lhs.Edges[0] == rhs.Edges[0] && lhs.Edges[1] == rhs.Edges[1] && lhs.Edges[2] == rhs.Edges[2];
+            return lhs.P1 == rhs.P1 && lhs.P2 == rhs.P2 && lhs.P3 == rhs.P3;
         }
 
         public static bool operator !=(Triangle lhs, Triangle rhs)
         {
             return !(lhs == rhs);
         }
+
+        public override int GetHashCode()
+        {
+            return P1.GetHashCode() ^ P2.GetHashCode() ^ P3.GetHashCode();
+        }
+
+        public override bool Equals(object other)
+        {
+            if (!(other is Triangle))
+            {
+                return false;
+            }
+
+            return Equals((Triangle)other);
+        }
+
+        public bool Equals(Triangle other)
+        {
+            return this == other;
+        }
     }
+
 
     public class TriangleMesh
     {
         public List<Triangle> Triangles = new List<Triangle>();
+        public List<Edge> Edges = new List<Edge>();
+        public List<Point> Points = new List<Point>();
 
-        public void SetTriangles(List<Triangle> triangles)
-        {
-            this.Triangles = triangles;
-        }
+        //public void SetTriangles(List<Triangle> triangles)
+        //{
+        //    this.Triangles = triangles;
+        //}
 
-        public void SetEdgeAtIndex(int index, Edge edge)
-        {
-            List<Edge> edges = GetUniqueEdges();
-            edges[index] = edge;
-        }
+        //public void SetEdgeAtIndex(int index, Edge edge)
+        //{
+        //    List<Edge> edges = GetUniqueEdges();
+        //    edges[index] = edge;
+        //}
 
-        public List<Point> GetUniqueVertices()
-        {
-            List<Point> vertices = new List<Point>();
+        //public List<Point> GetUniqueVertices()
+        //{
+        //    List<Point> vertices = new List<Point>();
 
-            for (int i = 0; i < Triangles.Count; i++)
-            {
-                Triangle triangle = Triangles[i];
+        //    for (int i = 0; i < Triangles.Count; i++)
+        //    {
+        //        Triangle triangle = Triangles[i];
 
-                for (int j = 0; j < triangle.Edges.Length; j++)
-                {
-                    if (!vertices.Contains(triangle.Edges[j].Start))
-                    {
-                        vertices.Add(triangle.Edges[j].Start);
-                    }
-                }
-            }
+        //        for (int j = 0; j < triangle.Edges.Length; j++)
+        //        {
+        //            if (!vertices.Contains(triangle.Edges[j].Start))
+        //            {
+        //                vertices.Add(triangle.Edges[j].Start);
+        //            }
+        //        }
+        //    }
 
-            return vertices;
-        }
+        //    return vertices;
+        //}
 
-        public List<Edge> GetEdges()
-        {
-            List<Edge> edges = new List<Edge>();
+        //public List<Edge> GetEdges()
+        //{
+        //    List<Edge> edges = new List<Edge>();
 
-            for (int i = 0; i < Triangles.Count; i++)
-            {
-                Triangle triangle = Triangles[i];
+        //    for (int i = 0; i < Triangles.Count; i++)
+        //    {
+        //        Triangle triangle = Triangles[i];
 
-                for (int j = 0; j < triangle.Edges.Length; j++)
-                {
-                    edges.Add(triangle.Edges[j]);
-                }
-            }
+        //        for (int j = 0; j < triangle.Edges.Length; j++)
+        //        {
+        //            edges.Add(triangle.Edges[j]);
+        //        }
+        //    }
 
-            return edges;
-        }
+        //    return edges;
+        //}
 
-        public List<Edge> GetUniqueEdges()
-        {
-            List<Edge> edges = new List<Edge>();
+        //public List<Edge> GetUniqueEdges()
+        //{
+        //    List<Edge> edges = new List<Edge>();
 
-            for (int i = 0; i < Triangles.Count; i++)
-            {
-                Triangle triangle = Triangles[i];
+        //    for (int i = 0; i < Triangles.Count; i++)
+        //    {
+        //        Triangle triangle = Triangles[i];
 
-                for (int j = 0; j < triangle.Edges.Length; j++)
-                {
-                    if (!edges.Contains(triangle.Edges[j]))
-                    {
-                        edges.Add(triangle.Edges[j]);
-                    }
-                    else
-                    {
+        //        for (int j = 0; j < triangle.Edges.Length; j++)
+        //        {
+        //            if (!edges.Contains(triangle.Edges[j]))
+        //            {
+        //                edges.Add(triangle.Edges[j]);
+        //            }
+        //            else
+        //            {
 
-                    }
-                }
-            }
+        //            }
+        //        }
+        //    }
 
-            return edges;
-        }
+        //    return edges;
+        //}
 
         public void Visualize()
         {
-            foreach (Edge edge in this.GetUniqueEdges())
+            foreach (Edge edge in Edges.Where(e => !e.InTree))
             {
                 Vector2 start = new Vector2(edge.Start.x, edge.Start.y);
                 Vector2 end = new Vector2(edge.End.x, edge.End.y);
 
-                if (edge.InTree)
-                {
-                    Debug.DrawLine(start, end, UnityEngine.Color.red, 100f);
-                }
-                else
-                {
-                    Debug.DrawLine(start, end, UnityEngine.Color.black, 5f);
-                }
+                Debug.DrawLine(start, end, UnityEngine.Color.black, 5f);
+            }
+
+            foreach (Edge edge in Edges.Where(e => e.InTree))
+            {
+                Vector2 start = new Vector2(edge.Start.x, edge.Start.y);
+                Vector2 end = new Vector2(edge.End.x, edge.End.y);
+
+                Debug.DrawLine(start, end, UnityEngine.Color.cyan, 100f);
             }
         }
     }
@@ -630,97 +1147,193 @@ namespace Assets.DungeonGeneratorAlgorithms
     {
         public static float minSuperTriangleSize;
 
+        //public static TriangleMesh Triangulate(Point[] points, float xSize, float ySize)
+        //{
+        //    TriangleMesh triangulation = new TriangleMesh();
+        //    triangulation.Points = points.ToList();
+
+        //    EdgedTriangle superTriangle = CreateSuperTriangle(xSize, ySize);
+
+        //    triangulation.Triangles.Add(superTriangle);
+
+        //    foreach (Point point in triangulation.Points)
+        //    {
+        //        List<EdgedTriangle> badTriangles = new List<EdgedTriangle>();
+
+        //        foreach (EdgedTriangle triangle in triangulation.Triangles)
+        //        {
+        //            Point circumcenter = triangle.GetCircumcenter();
+        //            float circumRadius = triangle.GetCircumRadius(circumcenter);
+        //            if (CheckIfPointLiesInCircle(point, circumcenter, circumRadius))
+        //            {
+        //                badTriangles.Add(triangle);
+        //            }
+        //        }
+
+        //        List<Edge> polygon = new List<Edge>();
+
+        //        foreach (EdgedTriangle triangle in badTriangles)
+        //        {
+        //            foreach(Edge edge in triangle.Edges)
+        //            {
+        //                bool isShared = badTriangles.Any(t => t != triangle && t.ContainsEdge(edge));
+        //                if (!isShared)
+        //                {
+        //                    polygon.Add(edge);
+        //                }
+        //            }
+        //        }
+
+        //        foreach (EdgedTriangle triangle in badTriangles)
+        //        {
+        //            triangulation.Triangles.Remove(triangle);
+        //        }
+
+        //        foreach (Edge edge in polygon)
+        //        {
+        //            Edge edge1 = new Edge(edge.Start, edge.End);
+        //            Edge edge2 = new Edge(edge.End, point);
+        //            Edge edge3 = new Edge(point, edge.Start);
+
+        //            EdgedTriangle newTriangle = new EdgedTriangle(edge1, edge2, edge3);
+        //            triangulation.Triangles.Add(newTriangle);
+        //        }
+        //    }
+
+        //    triangulation.Triangles = triangulation.Triangles.Where(t => 
+        //        !t.ContainsVertex(superTriangle.Edges[0].Start) &&
+        //        !t.ContainsVertex(superTriangle.Edges[1].Start) &&
+        //        !t.ContainsVertex(superTriangle.Edges[2].Start)).ToList();
+
+        //    HashSet<Edge> edgeSet = new HashSet<Edge>();
+
+        //    foreach (EdgedTriangle triangle in triangulation.Triangles)
+        //    {
+        //        Edge ab = new Edge(triangle.Edges[0].Start, triangle.Edges[0].End);
+        //        Edge bc = new Edge(triangle.Edges[1].Start, triangle.Edges[1].End);
+        //        Edge ca = new Edge(triangle.Edges[2].Start, triangle.Edges[2].End);
+
+        //        if (edgeSet.Add(ab))
+        //        {
+        //            triangulation.Edges.Add(ab);
+        //        }
+
+        //        if (edgeSet.Add(bc))
+        //        {
+        //            triangulation.Edges.Add(bc);
+        //        }
+
+        //        if (edgeSet.Add(ca))
+        //        {
+        //            triangulation.Edges.Add(ca);
+        //        }
+        //    }
+
+        //    return triangulation;
+        //}
+
         public static TriangleMesh Triangulate(Point[] points, float xSize, float ySize)
         {
             TriangleMesh triangulation = new TriangleMesh();
+            triangulation.Points = points.ToList();
 
             Triangle superTriangle = CreateSuperTriangle(xSize, ySize);
 
             triangulation.Triangles.Add(superTriangle);
 
-            foreach (Point point in points)
+            foreach (Point point in triangulation.Points)
             {
-                List<Triangle> badTriangles = new List<Triangle>();
+                List<Edge> polygon = new List<Edge>();
 
                 foreach (Triangle triangle in triangulation.Triangles)
                 {
-                    Point circumcenter = triangle.GetCircumcenter();
-                    float circumRadius = triangle.GetCircumRadius(circumcenter);
-                    if (CheckIfPointLiesInCircle(point, circumcenter, circumRadius))
+                    if (triangle.CircumCircleContains(point))
                     {
-                        badTriangles.Add(triangle);
+                        triangle.IsBad = true;
+                        polygon.Add(new Edge(triangle.P1, triangle.P2));
+                        polygon.Add(new Edge(triangle.P2, triangle.P3));
+                        polygon.Add(new Edge(triangle.P3, triangle.P1));
                     }
                 }
 
-                List<Edge> polygon = new List<Edge>();
+                triangulation.Triangles.RemoveAll((Triangle t) => t.IsBad);
 
-                foreach (Triangle triangle in badTriangles)
+                for (int i = 0; i < polygon.Count; i++)
                 {
-                    foreach(Edge edge in triangle.Edges)
+                    for (int j = i + 1; j < polygon.Count; j++)
                     {
-                        bool isShared = badTriangles.Any(t => t != triangle && t.Edges.Contains(edge));
-                        if (!isShared)
+                        if (Edge.AlmostEqual(polygon[i], polygon[j]))
                         {
-                            polygon.Add(edge);
+                            polygon[i].IsBad = true;
+                            polygon[j].IsBad = true;
                         }
                     }
                 }
 
-                foreach (Triangle triangle in badTriangles)
-                {
-                    triangulation.Triangles.Remove(triangle);
-                }
+                polygon.RemoveAll((Edge e) => e.IsBad);
 
                 foreach (Edge edge in polygon)
                 {
-                    Edge edge1 = new Edge(edge.Start, edge.End);
-                    Edge edge2 = new Edge(edge.End, point);
-                    Edge edge3 = new Edge(point, edge.Start);
-
-                    Triangle newTriangle = new Triangle(edge1, edge2, edge3);
-                    triangulation.Triangles.Add(newTriangle);
+                    triangulation.Triangles.Add(new Triangle(edge.Start, edge.End, point));
                 }
             }
 
-            triangulation.Triangles = triangulation.Triangles.Where(t => 
-                !t.ContainsVertex(superTriangle.Edges[0].Start) &&
-                !t.ContainsVertex(superTriangle.Edges[1].Start) &&
-                !t.ContainsVertex(superTriangle.Edges[2].Start)).ToList();
+            triangulation.Triangles.RemoveAll((Triangle t) => t.ContainsVertex(superTriangle.P1) || t.ContainsVertex(superTriangle.P2) || t.ContainsVertex(superTriangle.P3));
+
+            HashSet<Edge> edgeSet = new HashSet<Edge>();
+
+            foreach (Triangle triangle in triangulation.Triangles)
+            {
+                var ab = new Edge(triangle.P1, triangle.P2);
+                var bc = new Edge(triangle.P2, triangle.P3);
+                var ca = new Edge(triangle.P3, triangle.P1);
+
+                if (edgeSet.Add(ab))
+                {
+                    triangulation.Edges.Add(ab);
+                }
+
+                if (edgeSet.Add(bc))
+                {
+                    triangulation.Edges.Add(bc);
+                }
+
+                if (edgeSet.Add(ca))
+                {
+                    triangulation.Edges.Add(ca);
+                }
+            }
 
             return triangulation;
         }
 
         private static Triangle CreateSuperTriangle(float xSize, float ySize)
         {
-            Point p1 = new Point(-xSize, 0);
-            Point p2 = new Point(xSize * 2, 0);
+            Point p1 = new Point(-xSize, -ySize);
+            Point p2 = new Point(xSize * 2, -ySize);
             Point p3 = new Point(xSize / 2, ySize * 1.5f);
 
             p1 *= 2;
             p2 *= 2;
             p3 *= 2;
 
-            Edge edge1 = new Edge(p1, p2);
-            Edge edge2 = new Edge(p2, p3);
-            Edge edge3 = new Edge(p3, p1);
-
-            Triangle triangle = new Triangle(edge1, edge2, edge3);
+            Triangle triangle = new Triangle(p1, p2, p3);
             return triangle;
         }
 
-        private static bool CheckIfPointLiesInCircle(Point point, Point circlePoint, float radius)
-        {
-            if ((point.x - circlePoint.x) * (point.x - circlePoint.x) + 
-                (point.y - circlePoint.y) * (point.y - circlePoint.y)
-                <= radius * radius)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
+        //private static bool CheckIfPointLiesInCircle(Point point, Point circlePoint, float radius)
+        //{
+        //    if ((point.x - circlePoint.x) * (point.x - circlePoint.x) + 
+        //        (point.y - circlePoint.y) * (point.y - circlePoint.y)
+        //        <= radius * radius)
+        //    {
+        //        return true;
+        //    }
+        //    else
+        //    {
+        //        return false;
+        //    }
+        //}
 
 //        function BowyerWatson(pointList)
 //// pointList is a set of coordinates defining the points to be triangulated
@@ -853,20 +1466,47 @@ namespace Assets.DungeonGeneratorAlgorithms
 
         private void SetTriangleMesh(int[] parent, List<Point> points, TriangleMesh triangleMesh)
         {
-            List<Edge> edges = triangleMesh.GetUniqueEdges();
+            List<Edge> edges = triangleMesh.Edges;
 
             for (int i = 1; i < VerticesCount; i++)
             {
                 int startIndex = parent[i];
                 int endIndex = i;
-                GraphEdge graphEdge = GetEdge(parent[i], i);
 
-                if (graphEdge != null)
+                Point start = points[startIndex];
+                Point end = points[endIndex];
+
+                Edge edge = edges.Where(e => e.Start == start && e.End == end || e.Start == end && e.End == start).FirstOrDefault();
+
+                //for (int j = 0; j < edges.Count; j++)
+                //{
+                //    Edge currentEdge = edges[j];
+                //    if (currentEdge.Start == start && currentEdge.End == end)
+                //    {
+                //        edge = currentEdge;
+                //        break;
+                //    }
+                //}
+
+                Debug.Log($"after: {startIndex} - {endIndex} \t{GetEdgeWeight(startIndex, endIndex)}");
+
+                if (edge != null)
                 {
-                    edges.Contains(graphEdge.Edge);
-
-                    Edge edge = edges.Find(e => e == graphEdge.Edge);
+                    edge.InTree = true;
                 }
+                else
+                {
+                    Debug.Log("Ole! ");
+                }
+
+                //GraphEdge graphEdge = GetEdge(parent[i], i);
+
+                //if (graphEdge != null)
+                //{
+                //    edges.Contains(graphEdge.Edge);
+
+                //    Edge edge = edges.Find(e => e == graphEdge.Edge);
+                //}
 
                 //Debug.DrawLine(start, end, UnityEngine.Color.cyan, 100);
                 //Debug.Log($"{parent[i]} - {i} \t{GetEdgeWeight(, i)}");
@@ -959,8 +1599,8 @@ namespace Assets.DungeonGeneratorAlgorithms
     {
         public static void GetMinimumSpanningTree(TriangleMesh triangleMesh)
         {
-            List<Point> points = triangleMesh.GetUniqueVertices();
-            List<Edge> edges = triangleMesh.GetUniqueEdges();
+            List<Point> points = triangleMesh.Points;
+            List<Edge> edges = triangleMesh.Edges;
 
             Graph graph = new Graph(points.Count);
 
@@ -976,6 +1616,28 @@ namespace Assets.DungeonGeneratorAlgorithms
             }
 
             graph.PrimMST(points, triangleMesh);
+        }
+
+        public static void RandomlySelectEdges(TriangleMesh triangleMesh, float numAddedProcentEdges)
+        {
+            int totalEdges = triangleMesh.Edges.Count;
+
+            int numEdges = 0;
+
+            numEdges = (int)((float)totalEdges / 100f * numAddedProcentEdges);
+
+            List<Edge> edges = triangleMesh.Edges.Where(e => !e.InTree).ToList();
+
+            for (int i = 0; i < numEdges; i++)
+            {
+                int r = UnityEngine.Random.Range(0, edges.Count);
+
+                Edge edge = edges[r];
+
+                edge.InTree = true;
+
+                edges.Remove(edge);
+            }
         }
     }
 }

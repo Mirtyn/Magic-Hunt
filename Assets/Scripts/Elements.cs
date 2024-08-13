@@ -2,11 +2,11 @@
 
 public interface IElement
 {
-    public IEnemy Enemy { get; set; }
+    public AbstractEnemy Enemy { get; set; }
     public float TimeDelta { get; set; }
     public float MaxTime { get; set; }
 
-    public void ApplyOnEnemy(IEnemy enemy);
+    public void ApplyOnEnemy(AbstractEnemy enemy);
 
     public void Update();
 
@@ -15,14 +15,14 @@ public interface IElement
 
 public class FireElement : IElement
 {
-    public IEnemy Enemy { get; set; }
+    public AbstractEnemy Enemy { get; set; }
     public float TimeDelta { get; set; } = 0f;
     public float MaxTime { get; set; } = 3f;
     private float interval = 0.75f;
     private float currentInterval;
     private float damage = 0.75f;
 
-    public void ApplyOnEnemy(IEnemy enemy)
+    public void ApplyOnEnemy(AbstractEnemy enemy)
     {
         Enemy = enemy;
         currentInterval = MaxTime - interval;
@@ -53,13 +53,13 @@ public class FireElement : IElement
 
 public class IceElement : IElement
 {
-    public IEnemy Enemy { get; set; }
+    public AbstractEnemy Enemy { get; set; }
     public float TimeDelta { get; set; } = 0f;
     public float MaxTime { get; set; } = 4.5f;
     private float originalSpeed;
     private float debuffedSpeed;
 
-    public void ApplyOnEnemy(IEnemy enemy)
+    public void ApplyOnEnemy(AbstractEnemy enemy)
     {
         Enemy = enemy;
         originalSpeed = enemy.Speed;

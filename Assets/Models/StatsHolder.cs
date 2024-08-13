@@ -12,6 +12,7 @@ namespace Assets.Models
         public float Speed;
         public int Piercing;
         public float Size;
+        public float ProjectilesSpread;
         public IElement Element;
 
         public static StatsHolder Default = new StatsHolder
@@ -20,6 +21,7 @@ namespace Assets.Models
             Speed = 5,
             Piercing = 0,
             Size = 0.25f,
+            ProjectilesSpread = 60f,
             Element = null
         };
     }

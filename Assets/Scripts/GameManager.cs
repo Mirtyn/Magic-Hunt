@@ -17,11 +17,39 @@ public class GameManager : ProjectBehaviour
     public const string WALL_TAG = "Wall";
     public const string PLAYER_TAG = "Player";
 
+
+
+    int mapSizeX = 15;
+    int mapSizeY = 15;
+    int numRoomsToGenerate = 30;
+    int minNumRoomsToReturn = 42;
+    int maxNumRoomsToReturn = 58;
+    int maxNumAttemptsGenerateFillInGapRooms = 1;
+    int minRoomWidth = 4;
+    int maxRoomWidth = 12;
+    int minRoomHeight = 4;
+    int maxRoomHeight = 12;
+    float numRandomllyAddedProcentHallways = 13f;
+
     private void Awake()
     {
         GameManager = this;
 
-        DungeonGenerator dungeonGenerator = new DungeonGenerator(20, 20, 100, 25, 35, 100, 2, 10, 2, 10);
-        dungeonGenerator.Start();
+        DungeonGenerator dungeonGenerator = new DungeonGenerator
+        (
+            mapSizeX,
+            mapSizeY,
+            numRoomsToGenerate,
+            minNumRoomsToReturn,
+            maxNumRoomsToReturn,
+            maxNumAttemptsGenerateFillInGapRooms,
+            minRoomWidth,
+            maxRoomWidth,
+            minRoomHeight,
+            maxRoomHeight,
+            numRandomllyAddedProcentHallways
+        );
+
+        StartCoroutine(dungeonGenerator.Start());
     }
 }

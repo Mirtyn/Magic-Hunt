@@ -4,37 +4,14 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class TestInput : INodeInput
+public class TestInput : AbstractInputNode
 {
-    //public Vector2 Position { get; set; }
-    //public INode ConnectedInput { get; set; }
-    //public NodeHook AttachedNodeHook { get; set; }
-    public NodeVisualBehaviour NodeVisualBehaviour { get; set; }
-
-    public string TopBarText { get; set; } = "Input Node:\nTest Input";
-    public string Title { get; set; } = "Test Input";
-    public string Info { get; set; }
-
-    public INode ConnectedNode { get; set; }
-    public INode PrevConnectedNode { get; set; }
-
-    public float Damage;
+    public override string TopBarText { get; set; } = "Input Node:\nTest Input";
+    public override string Title { get; set; } = "Test Input";
+    public override string Info { get; set; } = "Test Input";
 
 
-    public void CreateNode(NodeVisualBehaviour nodeVisualBehaviour)
-    {
-        NodeVisualBehaviour = nodeVisualBehaviour;
-        nodeVisualBehaviour.SetColor(new Color(0f, 0.4f, 1f)) ;
-        nodeVisualBehaviour.Node = this;
-        nodeVisualBehaviour.SetTopBarText(TopBarText);
-    }
-
-    public void Activate(List<IProjectile> projectiles, StatsHolder stats)
-    {
-
-    }
-
-    public void Activate()
+    public override void Activate()
     {
         StatsHolder stats = StatsHolder.Default;
         stats.Element = new IceElement();
@@ -58,15 +35,5 @@ public class TestInput : INodeInput
         );
 
         ConnectedNode.Activate(projectiles, stats);
-    }
-
-    public bool SendHeartBeat()
-    {
-        if (ConnectedNode != null)
-        {
-            return ConnectedNode.SendHeartBeat();
-        }
-
-        return false;
     }
 }
