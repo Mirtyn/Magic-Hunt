@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : ProjectBehaviour
 {
@@ -19,17 +20,17 @@ public class GameManager : ProjectBehaviour
 
 
 
-    int mapSizeX = 15;
-    int mapSizeY = 15;
-    int numRoomsToGenerate = 30;
+    int mapSizeX = 50;
+    int mapSizeY = 50;
+    int numRoomsToGenerate = 150;
     int minNumRoomsToReturn = 42;
     int maxNumRoomsToReturn = 58;
     int maxNumAttemptsGenerateFillInGapRooms = 1;
-    int minRoomWidth = 4;
-    int maxRoomWidth = 12;
-    int minRoomHeight = 4;
-    int maxRoomHeight = 12;
-    float numRandomllyAddedProcentHallways = 13f;
+    int minRoomWidth = 5;
+    int maxRoomWidth = 24;
+    int minRoomHeight = 5;
+    int maxRoomHeight = 24;
+    float numRandomllyAddedProcentHallways = 10f;
 
     private void Awake()
     {
@@ -51,5 +52,10 @@ public class GameManager : ProjectBehaviour
         );
 
         StartCoroutine(dungeonGenerator.Start());
+    }
+
+    private void Start()
+    {
+        AsyncOperation asyncOperation = SceneManager.UnloadSceneAsync("SimulatedScene");
     }
 }

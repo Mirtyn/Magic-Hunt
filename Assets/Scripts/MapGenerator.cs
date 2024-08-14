@@ -21,6 +21,7 @@ using UnityEditor.SearchService;
 using UnityEngine.SceneManagement;
 using Scene = UnityEngine.SceneManagement.Scene;
 using static UnityEditor.PlayerSettings;
+using UnityEngine.SocialPlatforms;
 
 public class DungeonGenerator
 {
@@ -87,7 +88,7 @@ public class DungeonGenerator
     {
         for (int i = 0; i < numRoomsToGenerate; i++)
         {
-            rooms.Add(CreateRoom(GetRandomPointInCircle(mapSizeX)));
+            rooms.Add(CreateRoom(GetRandomPointInEllipse(mapSizeX, mapSizeY)));
         }
 
         bool simulate = true;
@@ -108,15 +109,14 @@ public class DungeonGenerator
             }
             while (simulate)
             {
-                time += Time.deltaTime;
+                time += 0.1f;
                 if (physicsScene2D.IsValid())
                 {
-                    while (time >= Time.deltaTime)
+                    while (time >= 0.1f)
                     {
-                        time -= Time.deltaTime;
+                        time -= 0.1f;
 
-                        physicsScene2D.Simulate(Time.deltaTime);
-                        yield return new WaitForSeconds(0.0002f);
+                        physicsScene2D.Simulate(0.1f);
                     }
                 }
                 else
@@ -135,7 +135,7 @@ public class DungeonGenerator
                     for (int i = 0; i < rooms.Count; i++)
                     {
                         Room room = rooms[i];
-                        room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
+                        room.Origin = new Vector2(Mathf.Floor(room.Origin.x), Mathf.Floor(room.Origin.y));
                         roomGameObjects[i].transform.position = room.Origin;
                         simulate = false;
                     }
@@ -150,25 +150,6 @@ public class DungeonGenerator
                 //    yield return new WaitForSeconds(0.0002f);
                 //}
             }
-
-            //SceneManager.UnloadSceneAsync(simulatedScene);
-        }
-
-        foreach (Room room in rooms)
-        {
-            VisualizeRoomWithTiles(room);
-        }
-
-        Debug.Log("ok");
-        for (int i = 0; i < rooms.Count; i++)
-        {
-            Room room = rooms[i];
-            room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
-        }
-
-        foreach (Room room in rooms)
-        {
-            VisualizeRoomWithTiles(room);
         }
 
         //if (rooms.Count > numRoomsToReturn)
@@ -210,29 +191,58 @@ public class DungeonGenerator
         //    }
         //}
 
-        foreach (Room room in rooms)
+        int averageRoomWidth;
+        int averageRoomHeight;
+
+        List<Room> roomsOrderedByWidth = rooms.OrderBy(r => r.Width).ToList();
+        List<Room> roomsOrderedByHeight = rooms.OrderBy(r => r.Height).ToList();
+        averageRoomWidth = roomsOrderedByWidth[(int)(roomsOrderedByWidth.Count / 2)].Width;
+        averageRoomHeight = roomsOrderedByHeight[(int)(roomsOrderedByHeight.Count / 2)].Height;
+
+        float minRoomWidth = (float)averageRoomWidth * 1.20f;
+        float minRoomHeight = (float)averageRoomHeight * 1.20f;
+
+        List<Room> mainRooms = rooms.Where(r => r.Width > minRoomWidth && r.Height > minRoomHeight).ToList();
+
+        foreach (Room room in mainRooms)
         {
             VisualizeRoomWithTiles(room);
         }
 
-        Point[] points = new Point[rooms.Count];
+        Point[] points = new Point[mainRooms.Count];
 
-        for (int i = 0; i < rooms.Count; i++)
+        for (int i = 0; i < mainRooms.Count; i++)
         {
-            Room room = rooms[i];
+            Room room = mainRooms[i];
+            room.MainRoom = true;
             float x = room.Origin.x + room.Width / 2;
             float y = room.Origin.y + room.Height / 2;
-            Point point = new Point(x, y);
+            Point point = new Point(x, y, room.Id);
             points[i] = point;
         }
 
-        TriangleMesh triangleMesh = BowyerWatson.Triangulate(points, mapSizeX, mapSizeY);
+        TriangleMesh triangleMesh = BowyerWatson.Triangulate(points);
 
         Prim.GetMinimumSpanningTree(triangleMesh);
 
         Prim.RandomlySelectEdges(triangleMesh, numRandomllyAddedProcentHallways);
 
-        triangleMesh.Visualize();
+        List<Hallway> hallways = CreateHallways(triangleMesh);
+
+        for (int i = 0; i < hallways.Count; i++)
+        {
+            Hallway hallway = hallways[i];
+
+            Debug.DrawLine(hallway.Start, hallway.End, UnityEngine.Color.yellow, 100f);
+
+            if (hallway.L_Shape)
+            {
+                Debug.DrawLine(hallway.Start, hallway.BendPoint, UnityEngine.Color.magenta, 100f);
+                Debug.DrawLine(hallway.BendPoint, hallway.End, UnityEngine.Color.magenta, 100f);
+            }
+        }
+
+        //triangleMesh.Visualize();
 
         yield return null;
     }
@@ -340,51 +350,51 @@ public class DungeonGenerator
     //    yield return null;
     //}
 
-    private void SeperateRooms()
-    {
-        while (CheckIfAnyRoomsAreOverlappingInList(rooms))
-        {
-            for (int i = 0; i < rooms.Count; i++)
-            {
-                Room room = rooms[i];
-                Vector2 force = SteeringBehaviourOperation(room);
-                room.Origin += force;
-            }
+    //private void SeperateRooms()
+    //{
+    //    while (CheckIfAnyRoomsAreOverlappingInList(rooms))
+    //    {
+    //        for (int i = 0; i < rooms.Count; i++)
+    //        {
+    //            Room room = rooms[i];
+    //            Vector2 force = SteeringBehaviourOperation(room);
+    //            room.Origin += force;
+    //        }
 
-            for (int i = 0; i < rooms.Count; i++)
-            {
-                Room room = rooms[i];
-                room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
-            }
-        }
-    }
+    //        for (int i = 0; i < rooms.Count; i++)
+    //        {
+    //            Room room = rooms[i];
+    //            room.Origin = new Vector2(Mathf.Round(room.Origin.x), Mathf.Round(room.Origin.y));
+    //        }
+    //    }
+    //}
 
-    private Vector2 SteeringBehaviourOperation(Room room)
-    {
-        Vector2 pushForce = Vector2.zero;
-        int neighboursCount = 0;
+    //private Vector2 SteeringBehaviourOperation(Room room)
+    //{
+    //    Vector2 pushForce = Vector2.zero;
+    //    int neighboursCount = 0;
 
-        foreach (Room other in rooms)
-        {
-            if (other != room && CheckForRoomOverlap(room, other))
-            {
-                float thisRoomSize = Mathf.Max(room.Width, room.Height) + 1;
-                float minDistanceForSeparation = (thisRoomSize / 2 + 2) + (Mathf.Max(other.Width, other.Height) / 2 + 2);
+    //    foreach (Room other in rooms)
+    //    {
+    //        if (other != room && CheckForRoomOverlap(room, other))
+    //        {
+    //            float thisRoomSize = Mathf.Max(room.Width, room.Height) + 1;
+    //            float minDistanceForSeparation = (thisRoomSize / 2 + 2) + (Mathf.Max(other.Width, other.Height) / 2 + 2);
 
-                float Distance = Vector2.Distance(room.Origin, other.Origin);
+    //            float Distance = Vector2.Distance(room.Origin, other.Origin);
 
-                if (Distance < minDistanceForSeparation)
-                {
-                    Vector2 pushDir = room.Origin - other.Origin;
+    //            if (Distance < minDistanceForSeparation)
+    //            {
+    //                Vector2 pushDir = room.Origin - other.Origin;
 
-                    pushForce += pushDir / thisRoomSize;
-                    neighboursCount++;
-                }
-            }
-        }
+    //                pushForce += pushDir / thisRoomSize;
+    //                neighboursCount++;
+    //            }
+    //        }
+    //    }
 
-        return pushForce;
-    }
+    //    return pushForce;
+    //}
 
     private Room CreateRoom(Vector2 startPoint)
     {
@@ -395,10 +405,9 @@ public class DungeonGenerator
         Vector2 pos = new Vector2(room.Origin.x, room.Origin.y);
         GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity);
 
-        obj.transform.localScale = new Vector3(width, height, 1);
+        obj.transform.localScale = new Vector3(width + 1.1f, height + 1.1f, 1);
         BoxCollider2D collider = obj.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(1 + 1 / width, 1 + 1 / height);
-        collider.offset = new Vector2(1 / width, 1 / height);
+        collider.offset = new Vector2(0.5f, 0.5f);
         Rigidbody2D rb = obj.AddComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
@@ -412,6 +421,16 @@ public class DungeonGenerator
         int x = random.Next(width + 1);
         int y = random.Next(height + 1);
 
+        return new Vector2(x, y);
+    }
+
+    private Vector2 GetRandomPointInEllipse(float ellipseWidth, float ellipseHeight)
+    {
+        float t = 2 * Mathf.PI * (float)random.NextDouble(); 
+        float u = (float)random.NextDouble() + (float)random.NextDouble();
+        float r = u > 1 ? 2 - u : u; 
+        float x = ellipseWidth * r * Mathf.Cos(t) / 2;
+        float y = ellipseHeight * r * Mathf.Sin(t) / 2;
         return new Vector2(x, y);
     }
 
@@ -497,8 +516,8 @@ public class DungeonGenerator
         {
             for (int y = 0; y < room.Height; y++)
             {
-                Vector2 pos = new Vector2(room.Origin.x - room.Width / 2 + x, room.Origin.y - room.Height / 2 + y);
-                Vector2 offset = new Vector2(x - room.Width / 2, y - room.Height / 2);
+                Vector2 pos = new Vector2(room.Origin.x + x, room.Origin.y + y);
+                Vector2 offset = new Vector2(x, y);
                 GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
                 Tile tile = new Tile(pos, offset, obj, room);
                 newTiles.Add(tile);
@@ -516,6 +535,126 @@ public class DungeonGenerator
         //        //tile.SceneObject.transform.SetParent(null);
         //    }
         //}
+    }
+
+    private List<Hallway> CreateHallways(TriangleMesh triangleMesh)
+    {
+        List<Edge> edges = triangleMesh.Edges.Where(e => e.InTree).ToList();
+        List<Hallway> hallways = new List<Hallway>();
+
+        for (int i = 0; i < edges.Count; i++)
+        {
+            Edge edge = edges[i];
+
+            Room room1 = Room.FindRoomByIdInList(edge.Start.RoomId, rooms);
+            Room room2 = Room.FindRoomByIdInList(edge.End.RoomId, rooms);
+
+            float room1MinX = room1.Origin.x;
+            float room1MaxX = room1.Origin.x + room1.Width;
+
+            float room1MinY = room1.Origin.y;
+            float room1MaxY = room1.Origin.y + room1.Height;
+
+            float room2MinX = room2.Origin.x;
+            float room2MaxX = room2.Origin.x + room2.Width;
+
+            float room2MinY = room2.Origin.y;
+            float room2MaxY = room2.Origin.y + room2.Height;
+
+            Vector2 midPoint = Vector2.Lerp(
+                new Vector2(room1.Origin.x + room1.Width / 2, room1.Origin.y + room1.Height / 2),
+                new Vector2(room2.Origin.x + room2.Width / 2, room2.Origin.y + room2.Height / 2), 0.5f);
+
+            Hallway hallway;
+            Vector2 start;
+            Vector2 end;
+            Vector2 bendPoint;
+
+            if (midPoint.x > room1MinX && midPoint.x < room1MaxX && midPoint.x > room2MinX && midPoint.x < room2MaxX)
+            {
+                // Horizontal Hallway
+                start = new Vector2(room1.Origin.x + room1.Width / 2, midPoint.y);
+                end = new Vector2(room2.Origin.x + room2.Width / 2, midPoint.y);
+
+                hallway = new Hallway(start, end);
+                hallways.Add(hallway);
+            }
+            else if (midPoint.y > room1MinY && midPoint.y < room1MaxY && midPoint.y > room2MinY && midPoint.y < room2MaxY)
+            {
+                // Vertical Hallway
+                start = new Vector2(midPoint.x, room1.Origin.y + room1.Height / 2); 
+                end = new Vector2(midPoint.x, room2.Origin.y + room2.Height / 2);
+
+                hallway = new Hallway(start, end);
+                hallways.Add(hallway);
+            }
+            else
+            {
+                // L-Shaped Hallway
+                if (room1.Width > room1.Height)
+                {
+                    int rndNum1 = random.Next(-(room1.Width / 5), room1.Width / 5);
+                    int rndNum2 = random.Next(-(room2.Height / 5), room2.Height / 5);
+                    start = new Vector2((room1.Width / 2) + rndNum1, room1.Origin.y + room1.Height / 2);
+                    end = new Vector2(room2.Origin.x + room2.Width / 2, (room2.Height / 2) + rndNum2);
+                    bendPoint = new Vector2(start.x, end.y);
+
+                    hallway = new Hallway(start, end, bendPoint);
+                    hallways.Add(hallway);
+                }
+                else
+                {
+                    int rndNum1 = random.Next(-(room1.Height / 5), room1.Height / 5);
+                    int rndNum2 = random.Next(-(room2.Width / 5), room2.Width / 5);
+                    start = new Vector2(room1.Origin.x + room1.Width / 2, (room1.Height / 2) + rndNum1);
+                    end = new Vector2((room2.Width / 2) + rndNum2, room2.Origin.y + room2.Height / 2);
+                    bendPoint = new Vector2(end.x, start.y);
+
+                    hallway = new Hallway(start, end, bendPoint);
+                    hallways.Add(hallway);
+                }
+            }
+
+            //if (room1MaxX > room2MinX && room1MinX < room2MaxX)
+            //{
+            //    onX = true;
+            //}
+            //else if (room1MaxY > room2MinY && room1MinY < room2MaxY)
+            //{
+            //    onY = true;
+            //}
+
+            //Hallway hallway;
+
+            //if (onX)
+            //{
+            //    //Horizontal Hallway
+            //    if (room1.Origin.y == room2.Origin.y)
+            //    {
+            //        Vector2 start;
+            //        Vector2 end;
+            //        start = new Vector2 (room1.Origin.x + room1.Width, room1.Origin.y);
+            //        end = new Vector2 (room2.Origin.x, room2.Origin.y);
+            //        hallway = new Hallway(start, end);
+            //    }
+            //    else if (room1.Origin.y > room2.Origin.y)
+            //    {
+
+            //    }
+            //}
+            //else if (onY)
+            //{
+            //    // Vertical Hallway
+
+            //}
+            //else
+            //{
+            //    // L Shape Hallway
+
+            //}
+        }
+
+        return hallways;
     }
 }
 
@@ -552,11 +691,14 @@ public class Tile
 
 public class Room
 {
+    public int Id;
+
     public int Width;
     public int Height;
 
     public Vector2 Origin;
 
+    public bool MainRoom = false;
     public bool Visualized = false;
 
     public event EventHandler OnRemove;
@@ -577,6 +719,48 @@ public class Room
         Width = width;
         Height = height;
         Origin = origin;
+        Id = GetHashCode();
+    }
+
+    public static Room FindRoomByIdInList(int? roomId, List<Room> rooms)
+    {
+        if (roomId == null) return null;
+
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            Room room = rooms[i];
+            if (room.Id == roomId)
+            {
+                return room;
+            }
+        }
+
+        return null;
+    }
+}
+
+public class Hallway
+{
+    public Vector2 Start;
+    public Vector2 End;
+
+    public bool L_Shape;
+
+    public Vector2 BendPoint;
+
+    public Hallway(Vector2 start, Vector2 end)
+    {
+        this.Start = start;
+        this.End = end;
+        this.L_Shape = false;
+    }
+
+    public Hallway(Vector2 start, Vector2 end, Vector2 bendpoint)
+    {
+        this.Start = start;
+        this.End = end;
+        this.L_Shape = true;
+        BendPoint = bendpoint;
     }
 }
 
@@ -640,11 +824,20 @@ namespace Assets.DungeonGeneratorAlgorithms
     {
         public float x;
         public float y;
+        public int? RoomId;
 
         public Point(float x, float y)
         {
             this.x = x;
             this.y = y;
+            this.RoomId = null;
+        }
+
+        public Point(float x, float y, int roomId)
+        {
+            this.x = x;
+            this.y = y;
+            this.RoomId = roomId;
         }
 
         // Euclidean distance
@@ -1044,7 +1237,6 @@ namespace Assets.DungeonGeneratorAlgorithms
         }
     }
 
-
     public class TriangleMesh
     {
         public List<Triangle> Triangles = new List<Triangle>();
@@ -1232,12 +1424,26 @@ namespace Assets.DungeonGeneratorAlgorithms
         //    return triangulation;
         //}
 
-        public static TriangleMesh Triangulate(Point[] points, float xSize, float ySize)
+        public static TriangleMesh Triangulate(Point[] points)
         {
             TriangleMesh triangulation = new TriangleMesh();
             triangulation.Points = points.ToList();
 
-            Triangle superTriangle = CreateSuperTriangle(xSize, ySize);
+            float xMinSize = 0;
+            float xMaxSize = 0;
+            float yMinSize = 0;
+            float yMaxSize = 0;
+
+            for (int i = 0; i < points.Length; i++)
+            {
+                Point point = points[i];
+                if (xMinSize > point.x) xMinSize = point.x;
+                if (xMaxSize < point.x) xMaxSize = point.x;
+                if (yMinSize > point.y) yMinSize = point.y;
+                if (yMaxSize < point.y) yMaxSize = point.y;
+            }
+
+            Triangle superTriangle = CreateSuperTriangle(xMinSize, xMaxSize, yMinSize, yMaxSize);
 
             triangulation.Triangles.Add(superTriangle);
 
@@ -1307,15 +1513,21 @@ namespace Assets.DungeonGeneratorAlgorithms
             return triangulation;
         }
 
-        private static Triangle CreateSuperTriangle(float xSize, float ySize)
+        private static Triangle CreateSuperTriangle(float xMinSize, float xMaxSize, float yMinSize, float yMaxSize)
         {
-            Point p1 = new Point(-xSize, -ySize);
-            Point p2 = new Point(xSize * 2, -ySize);
-            Point p3 = new Point(xSize / 2, ySize * 1.5f);
+            float xLength = xMaxSize - xMinSize;
+            float yLength = yMaxSize - yMinSize;
 
-            p1 *= 2;
-            p2 *= 2;
-            p3 *= 2;
+            Point minCorner = new Point(xMinSize, yMinSize);
+            //Point maxCorner = new Point(xMaxSize, yMaxSize);
+
+            Point p1 = new Point(-xLength -1, -yLength -1) + minCorner;
+            Point p2 = new Point(xLength * 2 +1, -yLength -1) + minCorner;
+            Point p3 = new Point(xLength / 2, yLength * 1.5f + 1) + minCorner;
+
+            p1 *= 5;
+            p2 *= 5;
+            p3 *= 5;
 
             Triangle triangle = new Triangle(p1, p2, p3);
             return triangle;
