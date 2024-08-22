@@ -22,6 +22,7 @@ using UnityEngine.SceneManagement;
 using Scene = UnityEngine.SceneManagement.Scene;
 using static UnityEditor.PlayerSettings;
 using UnityEngine.SocialPlatforms;
+using UnityEngine.U2D;
 
 public class DungeonGenerator
 {
@@ -29,13 +30,6 @@ public class DungeonGenerator
     private int mapSizeY = 150;
 
     private int numRoomsToGenerate = 30;
-
-    private int numRoomsToReturn = 0;
-
-    private int minNumRooms = 8;
-    private int maxNumRooms = 12;
-
-    private int maxNumAttemptsGenerateFillInGapRooms = 50;
 
     private List<Room> rooms = new List<Room>();
     private List<GameObject> roomGameObjects = new List<GameObject>();
@@ -52,39 +46,23 @@ public class DungeonGenerator
 
     private float numRandomllyAddedProcentHallways = 10;
 
-    private Dictionary<Vector2, Tile> tiles = new Dictionary<Vector2, Tile>();
-
     public DungeonGenerator()
     {
-        numRoomsToReturn = random.Next(minNumRooms, maxNumRooms);
     }
 
-    public DungeonGenerator(int mapSizeX, int mapSizeY, int numRoomsToGenerate, int minNumRoomsToReturn, int maxNumRoomsToReturn, int maxNumAttemptsGenerateFillInGapRooms, int minRoomWidth, int maxRoomWidth, int minRoomHeight, int maxRoomHeight, float numRandomllyAddedProcentHallways)
+    public DungeonGenerator(int mapSizeX, int mapSizeY, int numRoomsToGenerate, int minRoomWidth, int maxRoomWidth, int minRoomHeight, int maxRoomHeight, float numRandomllyAddedProcentHallways)
     {
         this.mapSizeX = mapSizeX;
         this.mapSizeY = mapSizeY;
         this.numRoomsToGenerate = numRoomsToGenerate;
-        this.minNumRooms = minNumRoomsToReturn;
-        this.maxNumRooms = maxNumRoomsToReturn;
         this.minRoomWidth = minRoomWidth;
         this.maxRoomWidth = maxRoomWidth;
         this.minRoomHeight = minRoomHeight;
         this.maxRoomHeight = maxRoomHeight;
-        this.maxNumAttemptsGenerateFillInGapRooms = maxNumAttemptsGenerateFillInGapRooms;
-        numRoomsToReturn = random.Next(minNumRooms, maxNumRooms);
         this.numRandomllyAddedProcentHallways = numRandomllyAddedProcentHallways;
     }
 
-    //Vector2 leftB = Vector2.zero;
-    //Vector2 rightB = new Vector2(mapSizeX, 0);
-    //Vector2 leftT = new Vector2(0, mapSizeY);
-    //Vector2 rightT = new Vector2(mapSizeX, mapSizeY);
-    //Debug.DrawLine(leftB, rightB, UnityEngine.Color.magenta, 100f);
-    //Debug.DrawLine(leftB, leftT, UnityEngine.Color.magenta, 100f);
-    //Debug.DrawLine(rightT, rightB, UnityEngine.Color.magenta, 100f);
-    //Debug.DrawLine(rightT, leftT, UnityEngine.Color.magenta, 100f);
-
-    public IEnumerator Start()
+    public Dungeon Start()
     {
         for (int i = 0; i < numRoomsToGenerate; i++)
         {
@@ -152,45 +130,6 @@ public class DungeonGenerator
             }
         }
 
-        //if (rooms.Count > numRoomsToReturn)
-        //{
-        //    int numRoomsToRemove = rooms.Count - numRoomsToReturn;
-
-        //    for (int i = 0; i < numRoomsToRemove; i++)
-        //    {
-        //        int rndNum = random.Next(rooms.Count);
-        //        Room removeRoom = rooms[rndNum];
-        //        removeRoom.Remove();
-        //        rooms.Remove(removeRoom);
-        //    }
-        //}
-        //else if (rooms.Count < numRoomsToReturn)
-        //{
-        //    int missingRooms = numRoomsToReturn - rooms.Count;
-
-        //    for (int i = 0; i < maxNumAttemptsGenerateFillInGapRooms; i++)
-        //    {
-        //        Room room = CreateRoom(GetRandomPointInSquare(mapSizeX, mapSizeY));
-        //        rooms.Add(room);
-        //        bool isOverlap = rooms.Any(r => CheckForRoomOverlap(room, r));
-
-        //        if (!isOverlap)
-        //        {
-        //            missingRooms--;
-        //        }
-        //        else
-        //        {
-        //            room.Remove();
-        //            rooms.Remove(room);
-        //        }
-
-        //        if (missingRooms <= 0)
-        //        {
-        //            break;
-        //        }
-        //    }
-        //}
-
         int averageRoomWidth;
         int averageRoomHeight;
 
@@ -204,11 +143,6 @@ public class DungeonGenerator
 
         List<Room> mainRooms = rooms.Where(r => r.Width > minRoomWidth && r.Height > minRoomHeight).ToList();
 
-        foreach (Room room in mainRooms)
-        {
-            VisualizeRoomWithTiles(room);
-        }
-
         Point[] points = new Point[mainRooms.Count];
 
         for (int i = 0; i < mainRooms.Count; i++)
@@ -217,7 +151,7 @@ public class DungeonGenerator
             room.MainRoom = true;
             float x = room.Origin.x + room.Width / 2;
             float y = room.Origin.y + room.Height / 2;
-            Point point = new Point(x, y, room.Id);
+            Point point = new Point(x, y, room);
             points[i] = point;
         }
 
@@ -229,22 +163,11 @@ public class DungeonGenerator
 
         List<Hallway> hallways = CreateHallways(triangleMesh);
 
-        for (int i = 0; i < hallways.Count; i++)
-        {
-            Hallway hallway = hallways[i];
+        List<Room> addRooms = CheckIfRoomIntersectsHallways(hallways, mainRooms);
 
-            Debug.DrawLine(hallway.Start, hallway.End, UnityEngine.Color.yellow, 100f);
+        Dungeon dungeon = new Dungeon(mainRooms, addRooms, hallways, new Dictionary<Vector2, Tile>());
 
-            if (hallway.L_Shape)
-            {
-                Debug.DrawLine(hallway.Start, hallway.BendPoint, UnityEngine.Color.magenta, 100f);
-                Debug.DrawLine(hallway.BendPoint, hallway.End, UnityEngine.Color.magenta, 100f);
-            }
-        }
-
-        //triangleMesh.Visualize();
-
-        yield return null;
+        return TurnIntoMapTiles(dungeon);
     }
 
     //public IEnumerator Start()
@@ -500,7 +423,7 @@ public class DungeonGenerator
         return room;
     }
 
-    private void VisualizeRoomWithTiles(Room room)
+    private void VisualizeRoomWithTiles(Room room, bool main)
     {
         List<Tile> newTiles = new List<Tile>();
 
@@ -519,7 +442,21 @@ public class DungeonGenerator
                 Vector2 pos = new Vector2(room.Origin.x + x, room.Origin.y + y);
                 Vector2 offset = new Vector2(x, y);
                 GameObject obj = GameObject.Instantiate(ProjectBehaviour.GameManager.TilePrefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
-                Tile tile = new Tile(pos, offset, obj, room);
+
+                if (!main)
+                {
+                    var t = obj.transform.GetChild(0);
+                    var v = t.GetChild(0);
+                    var c = t.GetComponent<SpriteRenderer>().color;
+                    c.a /= 2;
+                    t.GetComponent<SpriteRenderer>().color = c;
+
+                    var c1 = v.GetComponent<SpriteRenderer>().color;
+                    c1.a /= 2;
+                    v.GetComponent<SpriteRenderer>().color = c1;
+                }
+
+                Tile tile = new Tile(pos, offset, obj, room, TileType.None);
                 newTiles.Add(tile);
             }
         }
@@ -546,8 +483,8 @@ public class DungeonGenerator
         {
             Edge edge = edges[i];
 
-            Room room1 = Room.FindRoomByIdInList(edge.Start.RoomId, rooms);
-            Room room2 = Room.FindRoomByIdInList(edge.End.RoomId, rooms);
+            Room room1 = edge.Start.Room;
+            Room room2 = edge.End.Room;
 
             float room1MinX = room1.Origin.x;
             float room1MaxX = room1.Origin.x + room1.Width;
@@ -570,7 +507,7 @@ public class DungeonGenerator
             Vector2 end;
             Vector2 bendPoint;
 
-            if (midPoint.x > room1MinX && midPoint.x < room1MaxX && midPoint.x > room2MinX && midPoint.x < room2MaxX)
+            if (midPoint.y > room1MinY && midPoint.y < room1MaxY && midPoint.y > room2MinY && midPoint.y < room2MaxY)
             {
                 // Horizontal Hallway
                 start = new Vector2(room1.Origin.x + room1.Width / 2, midPoint.y);
@@ -579,7 +516,7 @@ public class DungeonGenerator
                 hallway = new Hallway(start, end);
                 hallways.Add(hallway);
             }
-            else if (midPoint.y > room1MinY && midPoint.y < room1MaxY && midPoint.y > room2MinY && midPoint.y < room2MaxY)
+            else if (midPoint.x > room1MinX && midPoint.x < room1MaxX && midPoint.x > room2MinX && midPoint.x < room2MaxX)
             {
                 // Vertical Hallway
                 start = new Vector2(midPoint.x, room1.Origin.y + room1.Height / 2); 
@@ -593,10 +530,13 @@ public class DungeonGenerator
                 // L-Shaped Hallway
                 if (room1.Width > room1.Height)
                 {
+                    // Start down or up
+
                     int rndNum1 = random.Next(-(room1.Width / 5), room1.Width / 5);
                     int rndNum2 = random.Next(-(room2.Height / 5), room2.Height / 5);
-                    start = new Vector2((room1.Width / 2) + rndNum1, room1.Origin.y + room1.Height / 2);
-                    end = new Vector2(room2.Origin.x + room2.Width / 2, (room2.Height / 2) + rndNum2);
+
+                    start = new Vector2((room1.Origin.x + room1.Width / 2) + rndNum1, room1.Origin.y + room1.Height / 2);
+                    end = new Vector2(room2.Origin.x + room2.Width / 2, (room2.Origin.y + room2.Height / 2) + rndNum2);
                     bendPoint = new Vector2(start.x, end.y);
 
                     hallway = new Hallway(start, end, bendPoint);
@@ -604,10 +544,13 @@ public class DungeonGenerator
                 }
                 else
                 {
+                    // Start left or right
+
                     int rndNum1 = random.Next(-(room1.Height / 5), room1.Height / 5);
                     int rndNum2 = random.Next(-(room2.Width / 5), room2.Width / 5);
-                    start = new Vector2(room1.Origin.x + room1.Width / 2, (room1.Height / 2) + rndNum1);
-                    end = new Vector2((room2.Width / 2) + rndNum2, room2.Origin.y + room2.Height / 2);
+
+                    start = new Vector2(room1.Origin.x + room1.Width / 2, (room1.Origin.y + room1.Height / 2) + rndNum1);
+                    end = new Vector2((room2.Origin.x + room2.Width / 2) + rndNum2, room2.Origin.y + room2.Height / 2);
                     bendPoint = new Vector2(end.x, start.y);
 
                     hallway = new Hallway(start, end, bendPoint);
@@ -656,6 +599,805 @@ public class DungeonGenerator
 
         return hallways;
     }
+
+    private List<Room> CheckIfRoomIntersectsHallways(List<Hallway> hallways, List<Room> mainRooms)
+    {
+        List<Room> addRooms = new List<Room>();
+        List<Room> rooms = this.rooms.Except(mainRooms).ToList();
+
+        foreach (Room room in rooms)
+        {
+            foreach (Hallway hallway in hallways)
+            {
+                if (hallway.L_Shape)
+                {
+                    if (LineIntersectsRoom(hallway.Start, hallway.BendPoint, room))
+                    {
+                        addRooms.Add(room);
+                        break;
+                    }
+                    else if (LineIntersectsRoom(hallway.BendPoint, hallway.End, room))
+                    {
+                        addRooms.Add(room);
+                        break;
+                    }
+                }
+                else if (LineIntersectsRoom(hallway.Start, hallway.End, room))
+                {
+                    addRooms.Add(room);
+                    break;
+                }
+            }
+        }
+
+        return addRooms;
+    }
+
+    public static bool LineIntersectsRoom(Vector2 p1, Vector2 p2, Room rect)
+    {
+        return LineIntersectsLine(p1, p2, new Vector2(rect.Origin.x, rect.Origin.y), new Vector2(rect.Origin.x + rect.Width, rect.Origin.y)) ||
+               LineIntersectsLine(p1, p2, new Vector2(rect.Origin.x + rect.Width, rect.Origin.y), new Vector2(rect.Origin.x + rect.Width, rect.Origin.y + rect.Height)) ||
+               LineIntersectsLine(p1, p2, new Vector2(rect.Origin.x + rect.Width, rect.Origin.y + rect.Height), new Vector2(rect.Origin.x, rect.Origin.y + rect.Height)) ||
+               LineIntersectsLine(p1, p2, new Vector2(rect.Origin.x, rect.Origin.y + rect.Height), new Vector2(rect.Origin.x, rect.Origin.y)) ||
+               (rect.Contains(p1) && rect.Contains(p2));
+    }
+
+    private static bool LineIntersectsLine(Vector2 line1p1, Vector2 line1p2, Vector2 line2p1, Vector2 line2p2)
+    {
+        float q = (line1p1.y - line2p1.y) * (line2p2.x - line2p1.x) - (line1p1.x - line2p1.x) * (line2p2.y - line2p1.y);
+        float d = (line1p2.x - line1p1.x) * (line2p2.y - line2p1.y) - (line1p2.y - line1p1.y) * (line2p2.x - line2p1.x);
+
+        if (d == 0)
+        {
+            return false;
+        }
+
+        float r = q / d;
+
+        q = (line1p1.y - line2p1.y) * (line1p2.x - line1p1.x) - (line1p1.x - line2p1.x) * (line1p2.y - line1p1.y);
+        float s = q / d;
+
+        if (r < 0 || r > 1 || s < 0 || s > 1)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private Dungeon TurnIntoMapTiles(Dungeon dungeon)
+    {
+        foreach (Room mainRoom in dungeon.MainRooms)
+        {
+            for (int x = 0; x < mainRoom.Width; x++)
+            {
+                for (int y = 0; y < mainRoom.Height; y++)
+                {
+                    TilesHolderSO tilesSo = ProjectBehaviour.GameManager.FloorTiles;
+                    Vector2 pos = new Vector2(mainRoom.Origin.x + x, mainRoom.Origin.y + y);
+                    var obj = GameObject.Instantiate(tilesSo.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                    int rndNum1 = UnityEngine.Random.Range(0, tilesSo.Tiles.Length);
+                    int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                    var t = obj.transform.GetChild(0);
+                    var r = t.GetComponent<SpriteRenderer>();
+                    r.sprite = tilesSo.Tiles[rndNum1];
+                    r.color = ProjectBehaviour.GameManager.MapColor;
+
+
+                    var v = t.eulerAngles;
+                    v.z = rndNum2 * 90;
+                    t.eulerAngles = v;
+
+                    Tile tile = new Tile(pos, new Vector2(x, y), obj, mainRoom, TileType.FloorMain);
+
+                    if (!dungeon.Tiles.TryAdd(pos, tile))
+                    {
+                        Debug.LogWarning("DoubleTile");
+                    }
+
+                    if (x == 0 && y == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y - 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y - 1) + mainRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, mainRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x - 1, y) + mainRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, mainRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == mainRoom.Width - 1 && y == mainRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y + 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y + 1) + mainRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, mainRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x + 1, y) + mainRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, mainRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == 0 && y == mainRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y + 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y + 1) + mainRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, mainRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x - 1, y) + mainRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, mainRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == 0 && x == mainRoom.Width - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y - 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y - 1) + mainRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, mainRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x + 1, y) + mainRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, mainRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x, y - 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == mainRoom.Width - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == mainRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x, y + 1) + mainRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, mainRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (Room normalRoom in dungeon.NormalRooms)
+        {
+            for (int x = 0; x < normalRoom.Width; x++)
+            {
+                for (int y = 0; y < normalRoom.Height; y++)
+                {
+                    TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                    Vector2 pos = new Vector2(normalRoom.Origin.x + x, normalRoom.Origin.y + y);
+                    var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                    int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                    int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                    var t = obj.transform.GetChild(0);
+                    var r = t.GetComponent<SpriteRenderer>();
+                    r.sprite = tilesSO.Tiles[rndNum1];
+                    r.color = ProjectBehaviour.GameManager.MapColor;
+
+                    var v = t.eulerAngles;
+                    v.z = rndNum2 * 90;
+                    t.eulerAngles = v;
+
+                    Tile tile = new Tile(pos, new Vector2(x, y), obj, normalRoom, TileType.FloorNormal);
+
+                    if (!dungeon.Tiles.TryAdd(pos, tile))
+                    {
+                        Debug.LogWarning("DoubleTile");
+                    }
+
+                    if (x == 0 && y == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y - 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y - 1) + normalRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, normalRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x - 1, y) + normalRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, normalRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == normalRoom.Width - 1 && y == normalRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y + 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y + 1) + normalRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, normalRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x + 1, y) + normalRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, normalRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == 0 && y == normalRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y + 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y + 1) + normalRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, normalRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x - 1, y) + normalRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, normalRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == 0 && x == normalRoom.Width - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y - 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos2 = new Vector2(x, y - 1) + normalRoom.Origin;
+                        Tile wallTile2 = CreateWall(wallPos2, normalRoom, wallPos2);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos2, wallTile2))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos2, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+
+                        Vector2 wallPos3 = new Vector2(x + 1, y) + normalRoom.Origin;
+                        Tile wallTile3 = CreateWall(wallPos3, normalRoom, wallPos3);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos3, wallTile3))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos3, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x - 1, y) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == 0)
+                    {
+                        Vector2 wallPos1 = new Vector2(x, y - 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (x == normalRoom.Width - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x + 1, y) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                    else if (y == normalRoom.Height - 1)
+                    {
+                        Vector2 wallPos1 = new Vector2(x, y + 1) + normalRoom.Origin;
+                        Tile wallTile1 = CreateWall(wallPos1, normalRoom, wallPos1);
+
+                        if (!dungeon.Tiles.TryAdd(wallPos1, wallTile1))
+                        {
+                            dungeon.Tiles.TryGetValue(wallPos1, out tile);
+                            if (tile.Type == TileType.FloorNormal || tile.Type == TileType.FloorMain)
+                            {
+                                Debug.LogWarning("Wall on floor");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (Hallway hallway in dungeon.Hallways)
+        {
+            if (hallway.L_Shape)
+            {
+                Vector2 diffrence1 = hallway.BendPoint - hallway.Start;
+
+                bool x1 = false;
+                if (Mathf.Abs(diffrence1.x) > Mathf.Abs(diffrence1.y))
+                {
+                    x1 = true;
+                }
+
+                int value1 = (int)Mathf.Max(Mathf.Abs(diffrence1.x), Mathf.Abs(diffrence1.y)) + 1;
+
+                for (int i = 0; i < value1; i++)
+                {
+                    if (x1)
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(i, 0) + hallway.Start;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                    else
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(0, i) + hallway.Start;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                }
+
+                Vector2 diffrence2 = hallway.End - hallway.BendPoint;
+
+                bool x2 = false;
+                if (Mathf.Abs(diffrence2.x) > Mathf.Abs(diffrence2.y))
+                {
+                    x2 = true;
+                }
+
+                int value2 = (int)Mathf.Max(Mathf.Abs(diffrence2.x), Mathf.Abs(diffrence2.y)) + 1;
+
+                for (int i = 0; i < value2; i++)
+                {
+                    if (x2)
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(i, 0) + hallway.BendPoint;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                    else
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(0, i) + hallway.BendPoint;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Vector2 diffrence = hallway.End - hallway.Start;
+
+                bool x = false;
+                if (Mathf.Abs(diffrence.x) > Mathf.Abs(diffrence.y))
+                {
+                    x = true;
+                }
+
+                int value = (int)Mathf.Max(Mathf.Abs(diffrence.x), Mathf.Abs(diffrence.y)) + 1;
+
+                for (int i = 0; i < value; i++)
+                {
+                    if (x)
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(i, 0) + hallway.Start;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                    else
+                    {
+                        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FloorTiles;
+                        Vector2 pos = new Vector2(0, i) + hallway.Start;
+                        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+                        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+                        int rndNum2 = UnityEngine.Random.Range(0, 4);
+
+                        var t = obj.transform.GetChild(0);
+                        var r = t.GetComponent<SpriteRenderer>();
+                        r.sprite = tilesSO.Tiles[rndNum1];
+                        r.color = ProjectBehaviour.GameManager.MapColor;
+
+                        var v = t.eulerAngles;
+                        v.z = rndNum2 * 90;
+                        t.eulerAngles = v;
+
+                        Tile tile = new Tile(pos, obj, TileType.FloorHallway);
+
+                        if (!dungeon.Tiles.TryAdd(pos, tile))
+                        {
+                            Debug.LogWarning("DoubleTile");
+                        }
+                    }
+                }
+            }
+        }
+
+        return dungeon;
+    }
+
+    public Tile CreateWall(Vector2 pos, Room room, Vector2 offset)
+    {
+        TilesHolderSO tilesSO = ProjectBehaviour.GameManager.FrontWallTiles;
+        var obj = GameObject.Instantiate(tilesSO.Prefab, pos, Quaternion.identity, ProjectBehaviour.GameManager.transform);
+
+        int rndNum1 = UnityEngine.Random.Range(0, tilesSO.Tiles.Length);
+
+        var t = obj.transform.GetChild(0);
+        var r = t.GetComponent<SpriteRenderer>();
+        r.sprite = tilesSO.Tiles[rndNum1];
+        r.color = ProjectBehaviour.GameManager.MapColor;
+
+        Tile tile = new Tile(pos, offset, obj, room, TileType.Wall);
+        return tile;
+    }
+}
+
+public class Dungeon
+{
+    public List<Room> MainRooms = new List<Room>();
+    public List<Room> NormalRooms = new List<Room>();
+    public List<Hallway> Hallways = new List<Hallway>();
+    public Dictionary<Vector2, Tile> Tiles = new Dictionary<Vector2, Tile>();
+
+    public Dungeon()
+    {
+        
+    }
+
+    public Dungeon(List<Room> mainRooms, List<Room> normalRooms, List<Hallway> hallways, Dictionary<Vector2, Tile> tiles)
+    {
+        MainRooms = mainRooms;
+        NormalRooms = normalRooms;
+        Hallways = hallways;
+        Tiles = tiles;
+    }
+}
+
+public enum TileType
+{
+    None,
+    FloorMain,
+    FloorNormal,
+    FloorHallway,
+    Wall,
 }
 
 public class Tile
@@ -664,8 +1406,9 @@ public class Tile
     public Vector2 OffsetPosition;
     public GameObject SceneObject;
     public Room Room;
+    public TileType Type;
 
-    public Tile(Vector2 position, Vector2 offset, GameObject sceneObject, Room room)
+    public Tile(Vector2 position, Vector2 offset, GameObject sceneObject, Room room, TileType type)
     {
         Position = position;
         OffsetPosition = offset;
@@ -673,6 +1416,14 @@ public class Tile
         room.OnRemove += OnRoomRemoved;
         room.OnRoomMoved += OnRoomMoved;
         Room = room;
+        Type = type;
+    }
+
+    public Tile(Vector2 position, GameObject sceneObject, TileType type)
+    {
+        Position = position;
+        SceneObject = sceneObject;
+        Type = type;
     }
 
     private void OnRoomMoved(object sender, EventArgs e)
@@ -691,8 +1442,6 @@ public class Tile
 
 public class Room
 {
-    public int Id;
-
     public int Width;
     public int Height;
 
@@ -714,28 +1463,16 @@ public class Room
         OnRemove?.Invoke(this, EventArgs.Empty);
     }
 
+    public bool Contains(Vector2 point)
+    {
+        return Origin.x < point.x && Origin.y < point.y && (Origin.x + Width) > point.x && (Origin.y + Height) > point.y;
+    }
+
     public Room(int width, int height, Vector2 origin)
     {
         Width = width;
         Height = height;
         Origin = origin;
-        Id = GetHashCode();
-    }
-
-    public static Room FindRoomByIdInList(int? roomId, List<Room> rooms)
-    {
-        if (roomId == null) return null;
-
-        for (int i = 0; i < rooms.Count; i++)
-        {
-            Room room = rooms[i];
-            if (room.Id == roomId)
-            {
-                return room;
-            }
-        }
-
-        return null;
     }
 }
 
@@ -824,20 +1561,20 @@ namespace Assets.DungeonGeneratorAlgorithms
     {
         public float x;
         public float y;
-        public int? RoomId;
+        public Room Room;
 
         public Point(float x, float y)
         {
             this.x = x;
             this.y = y;
-            this.RoomId = null;
+            this.Room = null;
         }
 
-        public Point(float x, float y, int roomId)
+        public Point(float x, float y, Room room)
         {
             this.x = x;
             this.y = y;
-            this.RoomId = roomId;
+            this.Room = room;
         }
 
         // Euclidean distance
@@ -1322,7 +2059,7 @@ namespace Assets.DungeonGeneratorAlgorithms
                 Vector2 start = new Vector2(edge.Start.x, edge.Start.y);
                 Vector2 end = new Vector2(edge.End.x, edge.End.y);
 
-                Debug.DrawLine(start, end, UnityEngine.Color.black, 5f);
+                Debug.DrawLine(start, end, UnityEngine.Color.black, 3.5f);
             }
 
             foreach (Edge edge in Edges.Where(e => e.InTree))

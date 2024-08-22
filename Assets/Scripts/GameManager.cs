@@ -5,10 +5,15 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : ProjectBehaviour
 {
+    public Dungeon Dungeon;
+    public Color MapColor;
+
     public GameObject NodePrefab;
     public GameObject ProjectilePrefab;
     public GameObject EnemyPrefab;
     public GameObject TilePrefab;
+    public TilesHolderSO FloorTiles;
+    public TilesHolderSO FrontWallTiles;
 
     public EnemySO ZombieSO;
 
@@ -23,9 +28,6 @@ public class GameManager : ProjectBehaviour
     int mapSizeX = 50;
     int mapSizeY = 50;
     int numRoomsToGenerate = 150;
-    int minNumRoomsToReturn = 42;
-    int maxNumRoomsToReturn = 58;
-    int maxNumAttemptsGenerateFillInGapRooms = 1;
     int minRoomWidth = 5;
     int maxRoomWidth = 24;
     int minRoomHeight = 5;
@@ -41,9 +43,6 @@ public class GameManager : ProjectBehaviour
             mapSizeX,
             mapSizeY,
             numRoomsToGenerate,
-            minNumRoomsToReturn,
-            maxNumRoomsToReturn,
-            maxNumAttemptsGenerateFillInGapRooms,
             minRoomWidth,
             maxRoomWidth,
             minRoomHeight,
@@ -51,7 +50,7 @@ public class GameManager : ProjectBehaviour
             numRandomllyAddedProcentHallways
         );
 
-        StartCoroutine(dungeonGenerator.Start());
+        Dungeon = dungeonGenerator.Start();
     }
 
     private void Start()
